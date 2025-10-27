@@ -12,6 +12,8 @@ JOIN trong SQL là một mệnh đề dùng để kết hợp dữ liệu từ h
 | **LEFT (OUTER) JOIN** | Trả về tất cả các bản ghi từ bảng bên trái và các bản ghi khớp từ bảng bên phải. Nếu không có bản ghi khớp, giá trị ở cột của bảng bên phải sẽ là NULL. |
 | **RIGHT (OUTER) JOIN** | Trả về tất cả các bản ghi từ bảng bên phải và các bản ghi khớp từ bảng bên trái. Nếu không có bản ghi khớp, giá trị ở cột của bảng bên trái sẽ là NULL. |
 | **FULL OUTER JOIN** | Trả về tất cả các bản ghi khi có sự khớp ở một trong hai bảng. Nếu không có bản ghi khớp, giá trị ở bảng không khớp sẽ là NULL. |
+| **SELF JOIN** | Là một loại JOIN đặc biệt nơi một bảng được join với chính nó. Thường được sử dụng khi bảng có mối quan hệ phân cấp hoặc cần so sánh các hàng trong cùng một bảng. |
+
 
 ## 1. Các loại Join trong SQL
 
@@ -43,7 +45,13 @@ RIGHT OUTER JOIN (Hoặc RIGHT JOIN): Trả lại tất cả các hàng từ b�
 
 FULL OUTER JOIN (Hoặc OUTER JOIN): Trả về tất cả các dòng đúng với 1 trong các bảng.
 
-![alt text](images/image-3.png)
+![alt text](images/image4.png)
+
+### 1.5 SELF JOIN
+
+SELF JOIN là một loại JOIN đặc biệt nơi một bảng được join với chính nó. Điều này hữu ích khi bạn cần so sánh các hàng trong cùng một bảng hoặc khi bảng có mối quan hệ phân cấp (như nhân viên và quản lý).
+
+![alt text](image.png)
 
 ## 2. Câu lệnh SQL Join
 
