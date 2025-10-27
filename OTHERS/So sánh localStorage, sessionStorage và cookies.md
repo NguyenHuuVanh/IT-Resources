@@ -76,6 +76,156 @@ const key = localStorage.key(0);
 
 ## 3. sessionStorage
 
+### 3.0.0. Tổng quan về Session
+
+#### 3.0.0.1. Session là gì?
+Session (phiên làm việc) là một cơ chế cho phép server lưu trữ thông tin về người dùng trong suốt quá trình tương tác của họ với ứng dụng web. Session giúp duy trì trạng thái (state) của người dùng giữa các HTTP requests khác nhau.
+HTTP là giao thức stateless (không trạng thái), nghĩa là mỗi request độc lập và server không "nhớ" request trước đó. Session được sinh ra để giải quyết vấn đề này.
+
+#### 3.0.0.2. Tại sao cần Session?
+
+Không có Session:
+User → Request 1: Login ✓
+User → Request 2: View profile → Server: "Bạn là ai?" ❌
+User → Request 3: Add to cart → Server: "Bạn là ai?" ❌
+
+Có Session:
+User → Request 1: Login ✓ → Server tạo session
+User → Request 2: View profile → Server: "À, bạn là John!" ✓
+User → Request 3: Add to cart → Server: "John đã thêm sản phẩm!" ✓
+
+### 3.0.1. Cơ chế hoạt động của Session
+
+#### 3.0.1.1. Quy trình cơ bản
+
+```
+1. User gửi request đăng nhập
+   ↓
+2. Server xác thực thành công
+   ↓
+3. Server tạo Session ID (unique)
+   ↓
+4. Server lưu Session data vào bộ nhớ/database
+   ↓
+5. Server gửi Session ID về client (qua Cookie)
+   ↓
+6. Client lưu Session ID trong Cookie
+   ↓
+7. Mọi request tiếp theo, client gửi kèm Session ID
+   ↓
+8. Server dùng Session ID để tìm Session data
+   ↓
+9. Server biết được user và trạng thái của họ
+```
+
+#### 3.0.1.2. Ví dụ chi tiết
+```javascript
+// ===== SERVER SIDE (Node.js + Express) =====
+
+const express = require('express');
+const session = require('express-session');
+const app = express();
+
+// Cấu hình session middleware
+app.use(session({
+  secret: 'my-secret-key',           // Key để mã hóa session ID
+  resave: false,                      // Không lưu lại session nếu không thay đổi
+  saveUninitialized: false,           // Không tạo session cho request không đăng nhập
+  cookie: { 
+    secure: false,                    // true nếu dùng HTTPS
+    httpOnly: true,                   // Không cho JavaScript truy cập
+    maxAge: 24 * 60 * 60 * 1000      // 24 giờ
+  }
+}));
+
+// Route đăng nhập
+app.post('/login', (req, res) => {
+  const { username, password } = req.body;
+  
+  // Xác thực user (ví dụ đơn giản)
+  if (username === 'john' && password === '123456') {
+    // Lưu thông tin vào session
+    req.session.userId = 1;
+    req.session.username = 'john';
+    req.session.role = 'admin';
+    req.session.loginTime = new Date();
+    
+    res.json({ success: true, message: 'Logged in' });
+  } else {
+    res.status(401).json({ success: false, message: 'Invalid credentials' });
+  }
+});
+
+// Route protected - cần đăng nhập
+app.get('/profile', (req, res) => {
+  // Kiểm tra session
+  if (req.session.userId) {
+    res.json({
+      userId: req.session.userId,
+      username: req.session.username,
+      role: req.session.role,
+      loginTime: req.session.loginTime
+    });
+  } else {
+    res.status(401).json({ message: 'Please login first' });
+  }
+});
+
+// Logout - xóa session
+app.post('/logout', (req, res) => {
+  req.session.destroy((err) => {
+    if (err) {
+      res.status(500).json({ message: 'Logout failed' });
+    } else {
+      res.clearCookie('connect.sid'); // Xóa cookie chứa session ID
+      res.json({ message: 'Logged out successfully' });
+    }
+  });
+});
+
+// ===== CLIENT SIDE =====
+
+// Login
+async function login() {
+  const response = await fetch('/login', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include', // Quan trọng: Gửi và nhận cookies
+    body: JSON.stringify({
+      username: 'john',
+      password: '123456'
+    })
+  });
+  
+  const data = await response.json();
+  console.log(data); // { success: true, message: 'Logged in' }
+  
+  // Browser tự động lưu session cookie
+}
+
+// Truy cập protected route
+async function getProfile() {
+  const response = await fetch('/profile', {
+    credentials: 'include' // Gửi kèm session cookie
+  });
+  
+  const data = await response.json();
+  console.log(data);
+  // { userId: 1, username: 'john', role: 'admin', ... }
+}
+
+// Logout
+async function logout() {
+  const response = await fetch('/logout', {
+    method: 'POST',
+    credentials: 'include'
+  });
+  
+  const data = await response.json();
+  console.log(data); // { message: 'Logged out successfully' }
+}
+```
+
 ### 3.1. sessionStorage là gì?
 
 **sessionStorage** tương tự như localStorage nhưng dữ liệu chỉ tồn tại trong phiên làm việc (session) của browser. Khi đóng tab hoặc window, dữ liệu sẽ bị xóa.
