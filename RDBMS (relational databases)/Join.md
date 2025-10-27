@@ -45,13 +45,13 @@ RIGHT OUTER JOIN (Hoặc RIGHT JOIN): Trả lại tất cả các hàng từ b�
 
 FULL OUTER JOIN (Hoặc OUTER JOIN): Trả về tất cả các dòng đúng với 1 trong các bảng.
 
-![alt text](images/image4.png)
+![alt text](images/image-3.png)
 
 ### 1.5 SELF JOIN
 
 SELF JOIN là một loại JOIN đặc biệt nơi một bảng được join với chính nó. Điều này hữu ích khi bạn cần so sánh các hàng trong cùng một bảng hoặc khi bảng có mối quan hệ phân cấp (như nhân viên và quản lý).
 
-![alt text](image.png)
+![alt text](images/image-4.png)
 
 ## 2. Câu lệnh SQL Join
 
