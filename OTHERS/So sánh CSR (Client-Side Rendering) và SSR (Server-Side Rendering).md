@@ -18,7 +18,7 @@ Trong thực tế, CSR thường được áp dụng đặc biệt cho SPA (Sing
 Trước đó, khi người dùng truy cập một website, browser sẽ gửi reques đến server. Server xử lý yêu cầu, render toàn bộ trang HTML trên server và trả về cho browser một trang HTML đã hoàn thiện.
 Tuy nhiên, với sự phát triển của JavaScript và nhu cầu người dùng tương tác cao trên website, CSR ra đời và đặc biệt trở nên phổ biến. CSR chuyển phần lớn quá trình render giao diện từ server sang browser, tận dụng tài nguyên máy của người dùng, đồng thời tạo ra trải nghiệm mượt mà, tương tác nhanh chóng hơn.
 
-![alt text](image.png)
+![alt text](images/image.png)
  
 Hầu hết các Single Page Application (SPA) - các ứng dụng web chỉ load trang HTML ban đầu, sau đó tương tác và cập nhật nội dung động mà không làm load lại trang - đều áp dụng CSR. Các thư viện và framework hiện đại như: React, Vue, Angular đều mặc định hoạt động theo hướng CSR hoặc hybrid (kết hợp SSR và CSR).
 
@@ -30,7 +30,7 @@ Nói dễ hiểu hơn thì bạn hãy tưởng tượng, bạn sử dụng React
 •	Sau khi load xong main.js, browser sẽ chạy React, "mount" ứng dụng vào thẻ <div id="root"> và bắt đầu tạo ra giao diện đầu tiên.
 •	Ứng dụng React sẽ gửi thêm các yêu cầu fetch đến API để lấy dữ liệu, rồi hiển thị dữ liệu này lên màn hình.
 
-![alt text](image-1.png)
+![alt text](images/image-1.png)
  
 Khi người dùng truy cập vào URL, server hầu như chỉ trả về khung HTML cơ bản, thường là file HTML trống hoặc chỉ có một vài thẻ <div> làm "vỏ". Browser sau đó mới load JavaScript. Chính các file JavaScript này, sau khi được load và thực thi, sẽ xây dựng cấu trúc DOM, chèn nội dung và cập nhật giao diện theo logic được định nghĩa trong source code frontend.
 Nói cách khác, thay vì server phải tạo ra HTML hoàn chỉnh cho từng request, thì trong CSR, phần lớn việc tạo nội dung trang, diễn ra trong browser sau khi người dùng đã tải về source code JavaScript của ứng dụng.
@@ -41,7 +41,7 @@ Nói cách khác, thay vì server phải tạo ra HTML hoàn chỉnh cho từng 
 
 ### 2.3. Cơ chế hoạt động của Client-Side Rendering
 
-![alt text](image-2.png)
+![alt text](images/image-2.png)
  
 Quy trình chung của CSR thường diễn ra như thế này:
 •	Khi người dùng gõ vào browser URL (ví dụ: https://200lab.io/), browser gửi request đến server. Server trả về file HTML rất đơn giản, thường chỉ chứa một <div id="root"></div> hoặc tương tự, kèm theo một thẻ <script src="/bundle.js"></script>.
@@ -90,7 +90,7 @@ Server-Side Rendering (SSR) là cách tiếp cận ngược lại. Thay vì brow
 •	Browser nhận được page HTML đã có sẵn nội dung, hiển thị gần như ngay lập tức.
 •	Sau đó, JavaScript phía client (cũng được đóng gói sẵn) sẽ "tiếp quản" trang, để hỗ trợ tương tác client-side.
 
-![alt text](image-3.png)
+![alt text](images/image-3.png)
  
 Ví dụ: nếu không có SSR, khi bạn vào website, bạn có thể nhận file HTML gần như rỗng: chỉ có <div id="root"></div>. Browser phải chạy JavaScript để tạo giao diện. Nếu như với SSR, khi bạn vào website, bạn nhận ngay đoạn HTML đã chứa đầy đủ <h1>Tiêu đề</h1><p>Nội dung trang...</p>. Browser hiển thị ngay nội dung mà bạn không phải chờ đợi.
 
@@ -99,7 +99,7 @@ Ví dụ: nếu không có SSR, khi bạn vào website, bạn có thể nhận f
 Người dùng thấy nội dung sớm hơn
 Khi trang web của bạn được render từ phía server (SSR), server sẽ xử lý ứng dụng và trả về đoạn HTML hoàn chỉnh ngay khi có yêu cầu. Khác với Client-Side Rendering (CSR), browser của bạn ban đầu nhận được một file HTML gần như trống (chỉ chứa vài thẻ cơ bản và một div trống), sau đó phải tải file JavaScript, phân tích và thực thi JavaScript để dựng giao diện hoàn thiện. Quá trình này ở CSR có thể mất thời gian, đặc biệt đối với kết nối internet chậm hoặc thiết bị yếu.
 
-![alt text](image-4.png)
+![alt text](images/image-4.png)
  
 Với SSR, ngay khi người dùng truy cập trang, bạn nhận được một khối HTML đã đầy đủ nội dung. Browser chỉ cần parse và hiển thị nó ngay lập tức, thay vì phải chờ đợi JavaScript load xong và hoàn thiện giao diện. Kết quả là người dùng sẽ thấy nội dung hiển thị trên màn hình nhanh chóng hơn rất nhiều. Thời gian hiển thị thông tin ban đầu (First Contentful Paint - FCP) được rút ngắn, tạo cảm giác "nhanh" hơn, giảm khả năng người dùng rời khỏi trang do chờ đợi lâu.
 Tốt cho SEO (Tối ưu hóa công cụ tìm kiếm)
@@ -120,7 +120,7 @@ Hãy tưởng tượng bạn có website được viết bằng React. Thông th
 •	Browser load và chạy JavaScript, cuối cùng mới thấy nội dung.
 Đối với cơ chế hoạt động của SSR bạn hãy xem qua hình phía dưới, kết hợp phần giải thích của mình bên dưới để hiểu rõ hơn nhé.
 
-![alt text](image-5.png)
+![alt text](images/image-5.png)
  
 •	Người dùng thực hiện hành động, ví dụ như nhập URL vào thanh địa chỉ trên browser hoặc click vào một liên kết dẫn đến website. Browser lúc này sẽ gửi request HTTP (GET request) đến server để yêu cầu nội dung của trang.
 •	Khi hành động request được thực hiện, browser sẽ gửi request HTTP tới server của ứng dụng. Request này chứa: URL của trang, các thông tin liên quan khác như: cookies, headers để server có thể xử lý.
@@ -156,7 +156,7 @@ Sau khi hoàn tất các bước trên, trang web trở nên đầy đủ và t�
 
 ### 3.4. SSR cải thiện hiệu suất
 
-![alt text](image-6.png)
+![alt text](images/image-6.png)
  
 Trên là hình ảnh tóm tắt cách SSR hoạt động và các chỉ số quan trọng liên quan đến hiệu suất:
 •	TTFB (Time to First Byte): thời gian từ khi browser gửi request đến khi nhận được byte đầu tiên từ server.

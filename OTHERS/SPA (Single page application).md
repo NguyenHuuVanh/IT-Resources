@@ -20,7 +20,7 @@ SPA mang lại nhiều lợi ích đáng kể so với các ứng dụng web tru
 
 Ví dụ, các ứng dụng như Gmail hay Google Maps đều là SPA. Bạn có thể sử dụng chúng ngay cả khi không có kết nối internet, mặc dù một số tính năng sẽ bị hạn chế.
 
-![alt text](image-7.png)
+![alt text](images/image-7.png)
 
 ## Ưu điểm của SPA
 
@@ -36,7 +36,7 @@ Mặc dù SPA có nhiều ưu điểm, nhưng cũng tồn tại một số như�
 
 Trước khi quyết định sử dụng SPA, hãy cân nhắc kỹ các ưu và nhược điểm để đảm bảo rằng nó phù hợp với yêu cầu của dự án.
 
-![alt text](image-8.png)
+![alt text](images/image-8.png)
 
 ## Nhược điểm của SPA
 
@@ -58,7 +58,7 @@ Dưới đây là bảng so sánh chi tiết giữa SPA và MPA:
 
 MPA phù hợp với các trang web lớn và phức tạp, nơi SEO là yếu tố quan trọng hàng đầu. Ngược lại, SPA phù hợp với các ứng dụng web tương tác cao, nơi trải nghiệm người dùng là ưu tiên hàng đầu.
 
-![alt text](image-9.png)
+![alt text](images/image-9.png)
 
 ## So sánh SPA và MPA (Multi-Page Application)
 
@@ -72,7 +72,7 @@ MPA phù hợp với các trang web lớn và phức tạp, nơi SEO là yếu t
 
 Ngoài ra, còn có nhiều framework và thư viện JavaScript khác có thể được sử dụng để xây dựng SPA, như Svelte, EmberJS, và Preact. Lựa chọn framework phù hợp phụ thuộc vào yêu cầu cụ thể của dự án, kinh nghiệm của đội ngũ phát triển, và sở thích cá nhân. Nếu bạn mới bắt đầu, VueJS có thể là một lựa chọn tốt do tính dễ học và cộng đồng hỗ trợ lớn. Nếu bạn cần xây dựng một ứng dụng phức tạp và có yêu cầu cao về hiệu suất, ReactJS hoặc Angular có thể là lựa chọn tốt hơn.
 
-![alt text](image-10.png)
+![alt text](images/image-10.png)
 
 ## Các Framework phổ biến để xây dựng SPA
 
@@ -88,7 +88,7 @@ SPA đang được sử dụng rộng rãi trong nhiều ứng dụng web hiện
 
 Các ứng dụng này đều có chung một đặc điểm là tốc độ tải nhanh, trải nghiệm người dùng mượt mà và khả năng tương tác cao. Đây là những lợi ích mà SPA mang lại cho người dùng. Bạn có thể thấy SPA được sử dụng trong nhiều lĩnh vực khác nhau, từ email, bản đồ, mạng xã hội đến xem phim trực tuyến.
 
-![alt text](image-11.png)
+![alt text](images/image-11.png)
 
 ## Ví dụ thực tế về SPA
 
@@ -104,7 +104,7 @@ SPA là một lựa chọn tuyệt vời cho nhiều loại ứng dụng web, nh
 
 Trước khi quyết định sử dụng SPA, hãy cân nhắc kỹ các yêu cầu của dự án và đảm bảo rằng nó phù hợp với các tiêu chí trên.
 
-![alt text](image-12.png)
+![alt text](images/image-12.png)
 
 ## Khi nào nên sử dụng SPA?
 
@@ -120,6 +120,6 @@ Mặc dù SPA có nhiều ưu điểm, nhưng cũng có những trường hợp 
 
 Hãy đánh giá kỹ các yếu tố trên trước khi quyết định sử dụng SPA cho dự án của bạn.
 
-![alt text](image-13.png)
+![alt text](images/image-13.png)
 
 ## Khi nào không nên sử dụng SPA?
