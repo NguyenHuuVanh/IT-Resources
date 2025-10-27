@@ -84,6 +84,7 @@ HTTP là giao thức stateless (không trạng thái), nghĩa là mỗi request 
 
 #### 3.0.0.2. Tại sao cần Session?
 
+```
 Không có Session:
 User → Request 1: Login ✓
 User → Request 2: View profile → Server: "Bạn là ai?" ❌
@@ -93,6 +94,7 @@ Có Session:
 User → Request 1: Login ✓ → Server tạo session
 User → Request 2: View profile → Server: "À, bạn là John!" ✓
 User → Request 3: Add to cart → Server: "John đã thêm sản phẩm!" ✓
+```
 
 ### 3.0.1. Cơ chế hoạt động của Session
 
