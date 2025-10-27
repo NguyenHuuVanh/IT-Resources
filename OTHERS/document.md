@@ -216,7 +216,7 @@ Nếu trang của bạn là SPA nội bộ, không cần SEO, SSR có thể khô
 ### 3.7. SSR với framework NextJS
 
 Việc tự code SSR sẽ giúp bạn hiểu rõ cơ chế, nhưng thường khá vất vả. Framework Next.js sẽ lo phần nặng nhọc. Với Next.js bạn không phải tự cấu hình SSR, mọi thứ đều tự động. Bạn chỉ cần tập trung vào logic ứng dụng.
-JSX
+```JSX
 export async function getServerSideProps() {
   const res = await fetch('https://jsonplaceholder.typicode.com/posts/1');
   const post = await res.json();
@@ -232,9 +232,11 @@ export default function Home({ post }) {
     </main>
   );
 }
+```
 Truy cập http://localhost:3000, bạn thấy nội dung ngay vì Next.js đã SSR sẵn, không cần bạn viết renderToString như bên React.
 Không phải là SSR lúc nào cũng nhanh, đây là một vài cách mình hay sử dụng
 •	Caching: Lưu kết quả SSR vào bộ nhớ hoặc CDN. Nếu dữ liệu ít thay đổi, thay vì render mỗi request, bạn cache vài chục giây.
+```
 JS
 let cachedData = null;
 let lastFetch = 0;
@@ -247,7 +249,9 @@ server.get('*', async (req, res) => {
   }
 
 });
+```
 •	Streaming SSR (React 18): Thay vì chờ render xong toàn bộ trang, bạn gửi HTML từng phần. Trình duyệt hiển thị sớm phần có sẵn.
+```
 JS
 import { renderToPipeableStream } from 'react-dom/server';
 
@@ -259,9 +263,11 @@ server.get('/', (req, res) => {
     }
   });
 });
+```
 •	Giảm kích thước bundle JS: Next.js hỗ trợ code splitting, dynamic import.
 •	Tối ưu database và API: giảm thiểu số lần truy vấn, tăng tốc server.
 Với SSR, nội dung có sẵn trong HTML. Công cụ tìm kiếm (Google) thấy nội dung mà không cần chạy JS, từ đó dễ lập chỉ mục hơn. Bạn cũng có thể đặt thẻ <title>, <meta> trên server, giúp SEO tốt.
+```
 JS
 import Head from 'next/head';
 
@@ -279,6 +285,7 @@ export default function Page({ post }) {
     </>
   );
 }
+```
 Nhờ SSR, <title> và <meta> xuất hiện ngay trong HTML trả về.
 Lưu ý: SSR chạy trên server, bạn có thể kiểm tra token, cookie để quyết định nội dung hiển thị. Ví dụ, chỉ người dùng đã đăng nhập mới thấy thông tin nhạy cảm. Tuy nhiên, chú ý không đẩy thông tin nhạy cảm vào HTML. Tất cả dữ liệu trong HTML gửi xuống client là công khai. Chỉ gửi thông tin cần thiết. Thông tin nhạy cảm cần được bảo vệ (ví dụ gửi token nhạy cảm ở HTTP-only cookie chứ không nhúng vào HTML).
 
