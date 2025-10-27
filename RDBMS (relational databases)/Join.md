@@ -102,8 +102,8 @@ Có bảng `order_kh` với thông tin như sau:
 Chúng ta chạy câu lệnh SQL join sau đây, và xem kết quả trả ra, sẽ lấy ra như sau:
 
 ```sql
-SELECT * FROM lanptp.khach_hang AS KH
-JOIN lanptp.order_kh AS OD ON KH.MaKH = OD.MaKH;
+SELECT * FROM khach_hang AS KH
+JOIN order_kh AS OD ON KH.MaKH = OD.MaKH;
 ```
 
 **Kết quả:**
