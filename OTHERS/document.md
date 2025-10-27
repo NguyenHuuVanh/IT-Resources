@@ -236,8 +236,7 @@ export default function Home({ post }) {
 Truy cập http://localhost:3000, bạn thấy nội dung ngay vì Next.js đã SSR sẵn, không cần bạn viết renderToString như bên React.
 Không phải là SSR lúc nào cũng nhanh, đây là một vài cách mình hay sử dụng
 •	Caching: Lưu kết quả SSR vào bộ nhớ hoặc CDN. Nếu dữ liệu ít thay đổi, thay vì render mỗi request, bạn cache vài chục giây.
-```
-JS
+```JS
 let cachedData = null;
 let lastFetch = 0;
 server.get('*', async (req, res) => {
@@ -251,8 +250,8 @@ server.get('*', async (req, res) => {
 });
 ```
 •	Streaming SSR (React 18): Thay vì chờ render xong toàn bộ trang, bạn gửi HTML từng phần. Trình duyệt hiển thị sớm phần có sẵn.
-```
-JS
+
+```JS
 import { renderToPipeableStream } from 'react-dom/server';
 
 server.get('/', (req, res) => {
@@ -267,8 +266,8 @@ server.get('/', (req, res) => {
 •	Giảm kích thước bundle JS: Next.js hỗ trợ code splitting, dynamic import.
 •	Tối ưu database và API: giảm thiểu số lần truy vấn, tăng tốc server.
 Với SSR, nội dung có sẵn trong HTML. Công cụ tìm kiếm (Google) thấy nội dung mà không cần chạy JS, từ đó dễ lập chỉ mục hơn. Bạn cũng có thể đặt thẻ <title>, <meta> trên server, giúp SEO tốt.
-```
-JS
+
+```JS
 import Head from 'next/head';
 
 export default function Page({ post }) {
