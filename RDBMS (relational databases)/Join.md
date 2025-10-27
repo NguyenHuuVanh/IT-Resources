@@ -223,6 +223,54 @@ FULL OUTER JOIN lanptp.order_kh AS OD ON KH.MaKH = OD.MaKH;
 | 3    | Le C     | Da Nang | NULL | NULL | NULL      | NULL     |
 | NULL | NULL     | NULL    | 103  | 4    | 2023-01-03| 150000   |
 
+### 2.5 Câu lệnh SELF JOIN
+
+SELF JOIN được sử dụng khi bạn muốn join một bảng với chính nó. Điều này thường xảy ra khi bảng có mối quan hệ phân cấp, như nhân viên và quản lý, hoặc khi bạn cần so sánh các hàng trong cùng một bảng.
+
+**Cú pháp:**
+
+```sql
+SELECT a.column_name, b.column_name
+FROM table_name a, table_name b
+WHERE condition;
+```
+
+Hoặc sử dụng alias rõ ràng:
+
+```sql
+SELECT a.column_name, b.column_name
+FROM table_name AS a
+INNER JOIN table_name AS b ON a.column_name = b.column_name;
+```
+
+**Ví dụ:**
+
+Giả sử có bảng `nhan_vien` với thông tin nhân viên và quản lý:
+
+| MaNV | TenNV     | MaQL |
+|------|-----------|------|
+| 1    | Nguyen A  | NULL |
+| 2    | Tran B    | 1    |
+| 3    | Le C      | 1    |
+| 4    | Pham D    | 2    |
+
+Để tìm tên nhân viên và tên quản lý của họ:
+
+```sql
+SELECT nv.TenNV AS NhanVien, ql.TenNV AS QuanLy
+FROM nhan_vien nv
+LEFT JOIN nhan_vien ql ON nv.MaQL = ql.MaNV;
+```
+
+**Kết quả:**
+
+| NhanVien | QuanLy   |
+|----------|----------|
+| Nguyen A | NULL     |
+| Tran B   | Nguyen A |
+| Le C     | Nguyen A |
+| Pham D   | Tran B   |
+
 ## 3. Kết luận
 
 Ở trên mình đã giới thiệu với các bạn về Các loại Join trong SQL và câu lệnh đi kèm, trong quá trình thực hành các bạn có thể kết hợp thêm các câu SQL DISTINCT, SQL Where, SQL And Or, SQL Count, SQL ORDER BY, SQL GROUP BY, SQL HAVING,... để truy vấn theo yêu cầu lấy ra data nhé!. Các bạn cần tìm hiểu thêm để có thể hiểu sâu hơn, kết hợp giữa các câu lệnh với nhau để thực hành tốt các câu lệnh trong MySQL và áp dụng hiệu quả nó vào công việc của bạn. Bạn có thể tham khảo Website ở link tài liệu tham khảo bên dưới để có thể học và thực hành một cách tốt nhất!
