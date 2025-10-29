@@ -22,7 +22,7 @@ Ngoài ra còn có Middleware:
 
 Dưới đây là hình ảnh miêu tả cách hoạt động của Redux:
 
-![alt text](images/image14.png)
+![alt text](../../09-RESOURCES/images/image14.png)
 
 ### 1.2. Luồng xử lý của Redux như sau:
 
@@ -36,7 +36,7 @@ Dưới đây là hình ảnh miêu tả cách hoạt động của Redux:
 
 Redux Toolkit (RTK) là bộ cung cụ chính thức của redux, nhằm đơn giản hoá và tối ưu quy trình phát triển ứng dụng với redux. Thay vì phải viết hàng loạt action creators, reducers, và middleware một cách thủ công, RTK cung cấp các thương thức tiện lợi như createSlice, createAsyncThunk, và configureStore, giúp tự động hoá hầu hết những công việc này
 
-![alt text](images/image15.png)
+![alt text](../../09-RESOURCES/images/image15.png)
 
 Chi tiết về các tính năng của Redux Toolkit:
 - configureStore: Tạo store Redux với mặc định đã được cấu hình sẵn (như devtools, middleware,...).

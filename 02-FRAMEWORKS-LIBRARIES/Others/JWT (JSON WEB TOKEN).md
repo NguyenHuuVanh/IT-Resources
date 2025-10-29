@@ -97,7 +97,7 @@ Ngoài ra, việc để thời gian hết hạn của JWT quá dài cũng có th
 
 ## 7. Cách hoạt động
 
-![alt text](images/image16.png)
+![alt text](../../09-RESOURCES/images/image16.png)
 
 Trong ví dụ này, trước tiên người dùng đăng nhập vào máy chủ xác thực bằng cách sử dụng hệ thống đăng nhập của máy chủ (ví dụ: username và password, Facebook login, Google login, etc). Server xác thực sau đó tạo JWT (JWT là token) và gửi nó cho người dùng. Khi người dùng thực hiện các lần gọi API đến ứng dụng, người dùng chuyển JWT cùng với cuộc gọi API. Trong thiết lập này, server của ứng dụng sẽ được cấu hình để xác minh rằng JWT đến được tạo ra bởi server xác thực. Vì vậy, khi người dùng thực hiện các cuộc gọi API đính kèm JWT, ứng dụng có thể sử dụng JWT để xác minh rằng cuộc gọi API đến từ một người dùng đã được xác thực.
 

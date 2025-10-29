@@ -655,7 +655,7 @@ export default PreviousStateExample;
 
 useContext là một hook trong React được sử dụng để truy cập các giá trị của một Context API. Context API trong React là một cách để truyền dữ liệu từ một thành phần cha đến các thành phần con mà không cần truyền props qua nhiều lớp con trung gian. useContext giúp bạn lấy giá trị từ Context API một cách dễ dàng.
 
-![alt text](images/image.png)
+![alt text](../../../09-RESOURCES/images/image.png)
 
 Nguồn: Karn Tech (Medium)
 
@@ -722,7 +722,7 @@ function App() {
 
 useReducer là một hooks được sử dụng để quản lý trạng thái (state) và hành động (actions) của ứng dụng. useReducer gần giống với useState, tuy nhiên nó thường được sử dụng khi bạn cần quản lý một trạng thái phức tạp hơn và khi trạng thái của bạn có quá nhiều hành động gây ra sự thay đổi.
 
-![alt text](images/image-1.png)
+![alt text](../../../09-RESOURCES/images/image-1.png)
 
 #### 3.8.2 Cách sử dụng useReducer()
 
