@@ -52,7 +52,7 @@ Trong OOP, một Object thường chứa 2 thành phần:
 
 ## 2. Các thành phần chính trong OOP
 
-![Các thành phần trong OOP - Lập trình hướng đối tượng](image.png)
+![Các thành phần trong OOP - Lập trình hướng đối tượng](../../09-RESOURCES/images/image18.png)
 
 
 Trong OOP có 2 thành phần chính: **Class** và **Object**
@@ -96,7 +96,7 @@ class Person {
 
 #### Ví dụ Objects từ Class Person
 
-![Ví dụ Objects](image-1.png)
+![Ví dụ Objects](../../09-RESOURCES/images/image17.png)
 
 ```java
 // Tạo Objects từ Class Person
@@ -128,7 +128,7 @@ Object person2 = Trần Thị B (người cụ thể)
 
 ## 3. 4 tính chất cơ bản trong OOP
 
-![4 tính chất OOP](image-2.png)
+![4 tính chất OOP](../../09-RESOURCES/images/image19.png)
 
 OOP có 4 tính chất cơ bản (4 trụ cột):
 
