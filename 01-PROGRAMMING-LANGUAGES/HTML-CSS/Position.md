@@ -9,7 +9,6 @@
 5. [So sánh Static vs Relative vs Absolute](#5-so-sánh-static-vs-relative-vs-absolute)
 6. [Position: Fixed và Sticky (Bonus)](#6-position-fixed-và-sticky-bonus)
 7. [Ví dụ thực tế](#7-ví-dụ-thực-tế)
-8. [Lỗi thường gặp và cách khắc phục](#8-lỗi-thường-gặp-và-cách-khắc-phục)
 
 ## 1. CSS Position là gì?
 
