@@ -55,8 +55,9 @@ Khi đó trên giao diện ta sẽ thấy mọi thứ hiển thị thế này:
 
 ### Đặc điểm
 - Phần tử có thuộc tính display thuộc kiểu Inline sẽ nằm cùng dòng với các phần tử cạnh nó.
+- Không bắt đầu một dòng mới
 - Ta có thể coi phần tử Inline như là các từ thuộc một đoạn văn, khi còn chỗ trống thì nó nằm bên cạnh phần tử trước nó, khi hết chỗ trống thì nó "xuống dòng".
-- Khoảng cách giữa phần tử Inline và các phần tử cạnh nó được để mặc định là khoảng cách giữa các từ của font-size.
+- Khoảng cách giữa phần tử Inline là do whitespace trong HTML
 - Ta **không thể** định nghĩa các thuộc tính `width`, `height`, `padding` và `margin` theo chiều dọc (`top`, `bottom`) dành cho các phần tử `Inline`.
 - **Chỉ áp dụng được** `margin` và `padding` theo chiều ngang (`left`, `right`).
 - **Không thể** chứa các phần tử **block-level** khác.
@@ -85,7 +86,7 @@ Mọi thứ vẫn giữ nguyên như vậy.
 ## 2. Block
 
 ### Đặc điểm
-- **Chiếm toàn bộ chiều rộng** có sẵn (mặc định 100%)
+- **Chiếm toàn bộ chiều rộng** khả dụng của container (mặc định 100%)
 - **Luôn bắt đầu trên một dòng mới**
 - **Có thể** thiết lập `width`, `height`, `margin`, `padding` đầy đủ
 - **Có thể** chứa cả phần tử inline và block khác
