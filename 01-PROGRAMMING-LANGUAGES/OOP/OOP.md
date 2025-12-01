@@ -9,9 +9,12 @@
    - 3.2 [Abstraction (Tính trừu tượng)](#32-abstraction-tính-trừu-tượng)
    - 3.3 [Inheritance (Tính kế thừa)](#33-inheritance-tính-kế-thừa)
    - 3.4 [Polymorphism (Tính đa hình)](#34-polymorphism-tính-đa-hình)
+   - 3.5 [Ví dụ 4 tính chất bằng C++ và JavaScript](#35-ví-dụ-4-tính-chất-oop-bằng-c-và-javascript)
 4. [Vì sao nên học OOP](#4-vì-sao-nên-học-oop)
 5. [Các hạn chế của OOP](#5-các-hạn-chế-của-lập-trình-hướng-đối-tượng-oop)
 6. [Kết luận](#6-kết-luận)
+7. [SOLID Principles](#7-solid-principles)
+8. [Design Patterns phổ biến](#8-design-patterns-phổ-biến-trong-oop)
 
 ---
 
@@ -1611,6 +1614,952 @@ processor.process(crypto);     // Processing crypto payment
 | **Maintainability**  | Dễ bảo trì, thêm loại mới không ảnh hưởng code cũ |
 | **Loose Coupling**   | Giảm sự phụ thuộc giữa các components             |
 | **Code Reusability** | Tái sử dụng code hiệu quả                         |
+
+---
+
+## 3.5 Ví dụ 4 tính chất OOP bằng C++ và JavaScript
+
+### 🔷 C++ Examples
+
+#### Encapsulation trong C++
+
+```cpp
+#include <iostream>
+#include <string>
+using namespace std;
+
+class BankAccount {
+private:
+    // Private data - ẩn giấu bên trong
+    string accountNumber;
+    string ownerName;
+    double balance;
+
+public:
+    // Constructor
+    BankAccount(string accNum, string name, double initialBalance) {
+        accountNumber = accNum;
+        ownerName = name;
+        balance = (initialBalance >= 0) ? initialBalance : 0;
+    }
+
+    // Getter methods - kiểm soát đọc
+    string getAccountNumber() const {
+        return accountNumber;
+    }
+
+    string getOwnerName() const {
+        return ownerName;
+    }
+
+    double getBalance() const {
+        return balance;
+    }
+
+    // Public methods với validation - kiểm soát ghi
+    bool deposit(double amount) {
+        if (amount > 0) {
+            balance += amount;
+            cout << "Deposited: $" << amount << endl;
+            return true;
+        }
+        cout << "Invalid deposit amount!" << endl;
+        return false;
+    }
+
+    bool withdraw(double amount) {
+        if (amount > 0 && amount <= balance) {
+            balance -= amount;
+            cout << "Withdrawn: $" << amount << endl;
+            return true;
+        }
+        cout << "Insufficient balance or invalid amount!" << endl;
+        return false;
+    }
+};
+
+int main() {
+    BankAccount account("ACC001", "John Doe", 1000);
+
+    // ❌ Không thể truy cập trực tiếp
+    // account.balance = 999999; // Error: 'balance' is private
+
+    // ✅ Phải dùng public methods
+    account.deposit(500);                    // Deposited: $500
+    cout << "Balance: $" << account.getBalance() << endl; // Balance: $1500
+    account.withdraw(200);                   // Withdrawn: $200
+
+    return 0;
+}
+```
+
+#### Abstraction trong C++
+
+```cpp
+#include <iostream>
+#include <cmath>
+using namespace std;
+
+// Abstract class (có ít nhất 1 pure virtual function)
+class Shape {
+protected:
+    string color;
+
+public:
+    Shape(string c) : color(c) {}
+
+    // Pure virtual functions - abstract methods
+    virtual double calculateArea() = 0;
+    virtual double calculatePerimeter() = 0;
+    virtual void draw() = 0;
+
+    // Concrete method
+    void displayColor() {
+        cout << "Color: " << color << endl;
+    }
+
+    // Virtual destructor
+    virtual ~Shape() {}
+};
+
+// Concrete class - Circle
+class Circle : public Shape {
+private:
+    double radius;
+
+public:
+    Circle(string c, double r) : Shape(c), radius(r) {}
+
+    double calculateArea() override {
+        return M_PI * radius * radius;
+    }
+
+    double calculatePerimeter() override {
+        return 2 * M_PI * radius;
+    }
+
+    void draw() override {
+        cout << "Drawing a " << color << " circle with radius " << radius << endl;
+    }
+};
+
+// Concrete class - Rectangle
+class Rectangle : public Shape {
+private:
+    double width, height;
+
+public:
+    Rectangle(string c, double w, double h) : Shape(c), width(w), height(h) {}
+
+    double calculateArea() override {
+        return width * height;
+    }
+
+    double calculatePerimeter() override {
+        return 2 * (width + height);
+    }
+
+    void draw() override {
+        cout << "Drawing a " << color << " rectangle " << width << "x" << height << endl;
+    }
+};
+
+int main() {
+    // ❌ Không thể tạo instance của abstract class
+    // Shape shape("red"); // Error!
+
+    // ✅ Tạo instance của concrete classes
+    Shape* circle = new Circle("red", 5);
+    Shape* rectangle = new Rectangle("blue", 4, 6);
+
+    // User chỉ cần biết interface, không cần biết implementation
+    circle->draw();                    // Drawing a red circle with radius 5
+    cout << "Area: " << circle->calculateArea() << endl;
+
+    rectangle->draw();                 // Drawing a blue rectangle 4x6
+    cout << "Area: " << rectangle->calculateArea() << endl;
+
+    delete circle;
+    delete rectangle;
+    return 0;
+}
+```
+
+#### Inheritance trong C++
+
+```cpp
+#include <iostream>
+#include <string>
+using namespace std;
+
+// Base class (Parent)
+class Vehicle {
+protected:
+    string brand;
+    int year;
+    double price;
+
+public:
+    Vehicle(string b, int y, double p) : brand(b), year(y), price(p) {}
+
+    void displayInfo() {
+        cout << "Brand: " << brand << ", Year: " << year << ", Price: $" << price << endl;
+    }
+
+    virtual void start() {
+        cout << "Vehicle is starting..." << endl;
+    }
+
+    virtual void stop() {
+        cout << "Vehicle is stopping..." << endl;
+    }
+};
+
+// Derived class (Child) - Car
+class Car : public Vehicle {
+private:
+    int numDoors;
+    string fuelType;
+
+public:
+    // Gọi constructor của parent class
+    Car(string b, int y, double p, int doors, string fuel)
+        : Vehicle(b, y, p), numDoors(doors), fuelType(fuel) {}
+
+    // Override method
+    void start() override {
+        cout << brand << " car: Turn key, engine starts. Vroom!" << endl;
+    }
+
+    void stop() override {
+        cout << brand << " car: Press brake, engine stops." << endl;
+    }
+
+    // Method riêng của Car
+    void honk() {
+        cout << brand << " car: Beep beep!" << endl;
+    }
+
+    void displayCarInfo() {
+        displayInfo(); // Gọi method từ parent
+        cout << "Doors: " << numDoors << ", Fuel: " << fuelType << endl;
+    }
+};
+
+// Derived class - Motorcycle
+class Motorcycle : public Vehicle {
+private:
+    string type; // sport, cruiser, touring
+
+public:
+    Motorcycle(string b, int y, double p, string t)
+        : Vehicle(b, y, p), type(t) {}
+
+    void start() override {
+        cout << brand << " motorcycle: Kick start. Vroom vroom!" << endl;
+    }
+
+    void stop() override {
+        cout << brand << " motorcycle: Apply brakes." << endl;
+    }
+
+    void wheelie() {
+        cout << brand << " motorcycle: Doing a wheelie!" << endl;
+    }
+};
+
+int main() {
+    Car myCar("Toyota", 2023, 25000, 4, "Gasoline");
+    Motorcycle myBike("Harley", 2022, 15000, "Cruiser");
+
+    // Sử dụng methods kế thừa
+    myCar.displayCarInfo();
+    myCar.start();      // Toyota car: Turn key, engine starts. Vroom!
+    myCar.honk();       // Toyota car: Beep beep!
+
+    cout << endl;
+
+    myBike.displayInfo();
+    myBike.start();     // Harley motorcycle: Kick start. Vroom vroom!
+    myBike.wheelie();   // Harley motorcycle: Doing a wheelie!
+
+    return 0;
+}
+```
+
+#### Polymorphism trong C++
+
+```cpp
+#include <iostream>
+#include <vector>
+#include <string>
+using namespace std;
+
+// ═══════════════════════════════════════════════════════════
+// COMPILE-TIME POLYMORPHISM (Method Overloading)
+// ═══════════════════════════════════════════════════════════
+
+class Calculator {
+public:
+    // Overloading: cùng tên, khác tham số
+    int add(int a, int b) {
+        return a + b;
+    }
+
+    double add(double a, double b) {
+        return a + b;
+    }
+
+    int add(int a, int b, int c) {
+        return a + b + c;
+    }
+
+    string add(string a, string b) {
+        return a + b;
+    }
+};
+
+// ═══════════════════════════════════════════════════════════
+// RUNTIME POLYMORPHISM (Method Overriding)
+// ═══════════════════════════════════════════════════════════
+
+class Animal {
+public:
+    virtual void speak() {
+        cout << "Animal makes a sound" << endl;
+    }
+
+    virtual void move() {
+        cout << "Animal moves" << endl;
+    }
+
+    virtual ~Animal() {}
+};
+
+class Dog : public Animal {
+public:
+    void speak() override {
+        cout << "Dog: Woof! Woof!" << endl;
+    }
+
+    void move() override {
+        cout << "Dog runs on 4 legs" << endl;
+    }
+};
+
+class Cat : public Animal {
+public:
+    void speak() override {
+        cout << "Cat: Meow! Meow!" << endl;
+    }
+
+    void move() override {
+        cout << "Cat walks gracefully" << endl;
+    }
+};
+
+class Bird : public Animal {
+public:
+    void speak() override {
+        cout << "Bird: Tweet! Tweet!" << endl;
+    }
+
+    void move() override {
+        cout << "Bird flies in the sky" << endl;
+    }
+};
+
+// Function nhận base class pointer - Polymorphism!
+void makeAnimalSpeak(Animal* animal) {
+    animal->speak(); // Gọi đúng method của derived class
+}
+
+int main() {
+    // Compile-time Polymorphism
+    Calculator calc;
+    cout << "=== Method Overloading ===" << endl;
+    cout << "add(5, 3) = " << calc.add(5, 3) << endl;           // 8
+    cout << "add(5.5, 3.2) = " << calc.add(5.5, 3.2) << endl;   // 8.7
+    cout << "add(1, 2, 3) = " << calc.add(1, 2, 3) << endl;     // 6
+    cout << "add(\"Hello\", \" World\") = " << calc.add("Hello", " World") << endl;
+
+    cout << "\n=== Method Overriding ===" << endl;
+
+    // Runtime Polymorphism
+    // Parent pointer, Child object
+    Animal* animals[3];
+    animals[0] = new Dog();
+    animals[1] = new Cat();
+    animals[2] = new Bird();
+
+    // Cùng method call, khác behavior
+    for (int i = 0; i < 3; i++) {
+        makeAnimalSpeak(animals[i]);
+        animals[i]->move();
+        cout << "---" << endl;
+    }
+
+    // Cleanup
+    for (int i = 0; i < 3; i++) {
+        delete animals[i];
+    }
+
+    return 0;
+}
+```
+
+---
+
+### 🟨 JavaScript Examples
+
+#### Encapsulation trong JavaScript (ES6+)
+
+```javascript
+// Sử dụng private fields (#) - ES2022+
+class BankAccount {
+  // Private fields
+  #accountNumber;
+  #ownerName;
+  #balance;
+
+  constructor(accountNumber, ownerName, initialBalance) {
+    this.#accountNumber = accountNumber;
+    this.#ownerName = ownerName;
+    this.#balance = initialBalance >= 0 ? initialBalance : 0;
+  }
+
+  // Getter methods
+  get accountNumber() {
+    return this.#accountNumber;
+  }
+
+  get ownerName() {
+    return this.#ownerName;
+  }
+
+  get balance() {
+    return this.#balance;
+  }
+
+  // Public methods với validation
+  deposit(amount) {
+    if (amount > 0) {
+      this.#balance += amount;
+      console.log(`Deposited: $${amount}`);
+      return true;
+    }
+    console.log("Invalid deposit amount!");
+    return false;
+  }
+
+  withdraw(amount) {
+    if (amount > 0 && amount <= this.#balance) {
+      this.#balance -= amount;
+      console.log(`Withdrawn: $${amount}`);
+      return true;
+    }
+    console.log("Insufficient balance or invalid amount!");
+    return false;
+  }
+
+  // Private method
+  #logTransaction(type, amount) {
+    console.log(`[LOG] ${type}: $${amount} at ${new Date().toISOString()}`);
+  }
+}
+
+// Sử dụng
+const account = new BankAccount("ACC001", "John Doe", 1000);
+
+// ❌ Không thể truy cập private fields
+// console.log(account.#balance); // SyntaxError
+
+// ✅ Phải dùng public methods/getters
+account.deposit(500); // Deposited: $500
+console.log(`Balance: $${account.balance}`); // Balance: $1500
+account.withdraw(200); // Withdrawn: $200
+```
+
+```javascript
+// Cách khác: Sử dụng Closure (ES5 compatible)
+function createBankAccount(accountNumber, ownerName, initialBalance) {
+  // Private variables (closure)
+  let _balance = initialBalance >= 0 ? initialBalance : 0;
+
+  return {
+    // Public getters
+    getAccountNumber: () => accountNumber,
+    getOwnerName: () => ownerName,
+    getBalance: () => _balance,
+
+    // Public methods
+    deposit(amount) {
+      if (amount > 0) {
+        _balance += amount;
+        console.log(`Deposited: $${amount}`);
+        return true;
+      }
+      return false;
+    },
+
+    withdraw(amount) {
+      if (amount > 0 && amount <= _balance) {
+        _balance -= amount;
+        console.log(`Withdrawn: $${amount}`);
+        return true;
+      }
+      return false;
+    },
+  };
+}
+
+const account2 = createBankAccount("ACC002", "Jane", 500);
+account2.deposit(100);
+console.log(account2.getBalance()); // 600
+```
+
+#### Abstraction trong JavaScript
+
+```javascript
+// Abstract class simulation trong JavaScript
+class Shape {
+  constructor(color) {
+    if (new.target === Shape) {
+      throw new Error("Cannot instantiate abstract class Shape directly!");
+    }
+    this.color = color;
+  }
+
+  // Abstract methods - phải được override
+  calculateArea() {
+    throw new Error("Method calculateArea() must be implemented!");
+  }
+
+  calculatePerimeter() {
+    throw new Error("Method calculatePerimeter() must be implemented!");
+  }
+
+  draw() {
+    throw new Error("Method draw() must be implemented!");
+  }
+
+  // Concrete method
+  displayColor() {
+    console.log(`Color: ${this.color}`);
+  }
+}
+
+// Concrete class - Circle
+class Circle extends Shape {
+  constructor(color, radius) {
+    super(color);
+    this.radius = radius;
+  }
+
+  calculateArea() {
+    return Math.PI * this.radius ** 2;
+  }
+
+  calculatePerimeter() {
+    return 2 * Math.PI * this.radius;
+  }
+
+  draw() {
+    console.log(`Drawing a ${this.color} circle with radius ${this.radius}`);
+  }
+}
+
+// Concrete class - Rectangle
+class Rectangle extends Shape {
+  constructor(color, width, height) {
+    super(color);
+    this.width = width;
+    this.height = height;
+  }
+
+  calculateArea() {
+    return this.width * this.height;
+  }
+
+  calculatePerimeter() {
+    return 2 * (this.width + this.height);
+  }
+
+  draw() {
+    console.log(`Drawing a ${this.color} rectangle ${this.width}x${this.height}`);
+  }
+}
+
+// Sử dụng
+// const shape = new Shape('red'); // ❌ Error: Cannot instantiate abstract class
+
+const circle = new Circle("red", 5);
+const rectangle = new Rectangle("blue", 4, 6);
+
+// User chỉ cần biết interface
+circle.draw(); // Drawing a red circle with radius 5
+console.log(`Area: ${circle.calculateArea().toFixed(2)}`); // Area: 78.54
+
+rectangle.draw(); // Drawing a blue rectangle 4x6
+console.log(`Area: ${rectangle.calculateArea()}`); // Area: 24
+```
+
+```javascript
+// Abstraction với Interface pattern
+// JavaScript không có interface, nhưng có thể simulate
+
+const VehicleInterface = {
+  start: function () {
+    throw new Error("start() must be implemented");
+  },
+  stop: function () {
+    throw new Error("stop() must be implemented");
+  },
+  accelerate: function () {
+    throw new Error("accelerate() must be implemented");
+  },
+};
+
+class Car {
+  constructor(brand) {
+    this.brand = brand;
+    // Verify interface implementation
+    Object.keys(VehicleInterface).forEach((method) => {
+      if (typeof this[method] !== "function") {
+        throw new Error(`${this.constructor.name} must implement ${method}()`);
+      }
+    });
+  }
+
+  start() {
+    console.log(`${this.brand}: Engine starts. Vroom!`);
+  }
+
+  stop() {
+    console.log(`${this.brand}: Engine stops.`);
+  }
+
+  accelerate() {
+    console.log(`${this.brand}: Speeding up!`);
+  }
+}
+
+const myCar = new Car("Toyota");
+myCar.start(); // Toyota: Engine starts. Vroom!
+```
+
+#### Inheritance trong JavaScript
+
+```javascript
+// Parent class
+class Vehicle {
+  constructor(brand, year, price) {
+    this.brand = brand;
+    this.year = year;
+    this.price = price;
+  }
+
+  displayInfo() {
+    console.log(`Brand: ${this.brand}, Year: ${this.year}, Price: $${this.price}`);
+  }
+
+  start() {
+    console.log("Vehicle is starting...");
+  }
+
+  stop() {
+    console.log("Vehicle is stopping...");
+  }
+}
+
+// Child class - Car
+class Car extends Vehicle {
+  constructor(brand, year, price, numDoors, fuelType) {
+    super(brand, year, price); // Gọi constructor của parent
+    this.numDoors = numDoors;
+    this.fuelType = fuelType;
+  }
+
+  // Override methods
+  start() {
+    console.log(`${this.brand} car: Turn key, engine starts. Vroom!`);
+  }
+
+  stop() {
+    console.log(`${this.brand} car: Press brake, engine stops.`);
+  }
+
+  // Method riêng của Car
+  honk() {
+    console.log(`${this.brand} car: Beep beep!`);
+  }
+
+  displayCarInfo() {
+    super.displayInfo(); // Gọi method từ parent
+    console.log(`Doors: ${this.numDoors}, Fuel: ${this.fuelType}`);
+  }
+}
+
+// Child class - Motorcycle
+class Motorcycle extends Vehicle {
+  constructor(brand, year, price, type) {
+    super(brand, year, price);
+    this.type = type;
+  }
+
+  start() {
+    console.log(`${this.brand} motorcycle: Kick start. Vroom vroom!`);
+  }
+
+  stop() {
+    console.log(`${this.brand} motorcycle: Apply brakes.`);
+  }
+
+  wheelie() {
+    console.log(`${this.brand} motorcycle: Doing a wheelie!`);
+  }
+}
+
+// Sử dụng
+const myCar = new Car("Toyota", 2023, 25000, 4, "Gasoline");
+const myBike = new Motorcycle("Harley", 2022, 15000, "Cruiser");
+
+myCar.displayCarInfo();
+// Brand: Toyota, Year: 2023, Price: $25000
+// Doors: 4, Fuel: Gasoline
+
+myCar.start(); // Toyota car: Turn key, engine starts. Vroom!
+myCar.honk(); // Toyota car: Beep beep!
+
+console.log("---");
+
+myBike.displayInfo(); // Brand: Harley, Year: 2022, Price: $15000
+myBike.start(); // Harley motorcycle: Kick start. Vroom vroom!
+myBike.wheelie(); // Harley motorcycle: Doing a wheelie!
+```
+
+#### Polymorphism trong JavaScript
+
+```javascript
+// ═══════════════════════════════════════════════════════════
+// METHOD OVERLOADING (Simulated - JS không hỗ trợ native)
+// ═══════════════════════════════════════════════════════════
+
+class Calculator {
+  // JavaScript không có method overloading thực sự
+  // Nhưng có thể simulate bằng cách kiểm tra arguments
+
+  add(...args) {
+    // Kiểm tra số lượng và kiểu tham số
+    if (args.length === 0) {
+      return 0;
+    }
+
+    if (args.every((arg) => typeof arg === "number")) {
+      return args.reduce((sum, num) => sum + num, 0);
+    }
+
+    if (args.every((arg) => typeof arg === "string")) {
+      return args.join("");
+    }
+
+    if (Array.isArray(args[0])) {
+      return args[0].reduce((sum, num) => sum + num, 0);
+    }
+
+    throw new Error("Invalid arguments");
+  }
+}
+
+const calc = new Calculator();
+console.log("=== Method Overloading (Simulated) ===");
+console.log("add(5, 3) =", calc.add(5, 3)); // 8
+console.log("add(1, 2, 3, 4) =", calc.add(1, 2, 3, 4)); // 10
+console.log('add("Hello", " ", "World") =', calc.add("Hello", " ", "World")); // Hello World
+console.log("add([1, 2, 3]) =", calc.add([1, 2, 3])); // 6
+
+// ═══════════════════════════════════════════════════════════
+// METHOD OVERRIDING (Runtime Polymorphism)
+// ═══════════════════════════════════════════════════════════
+
+class Animal {
+  constructor(name) {
+    this.name = name;
+  }
+
+  speak() {
+    console.log(`${this.name} makes a sound`);
+  }
+
+  move() {
+    console.log(`${this.name} moves`);
+  }
+}
+
+class Dog extends Animal {
+  speak() {
+    console.log(`${this.name}: Woof! Woof!`);
+  }
+
+  move() {
+    console.log(`${this.name} runs on 4 legs`);
+  }
+}
+
+class Cat extends Animal {
+  speak() {
+    console.log(`${this.name}: Meow! Meow!`);
+  }
+
+  move() {
+    console.log(`${this.name} walks gracefully`);
+  }
+}
+
+class Bird extends Animal {
+  speak() {
+    console.log(`${this.name}: Tweet! Tweet!`);
+  }
+
+  move() {
+    console.log(`${this.name} flies in the sky`);
+  }
+}
+
+// Function nhận base class - Polymorphism!
+function makeAnimalSpeak(animal) {
+  animal.speak(); // Gọi đúng method của derived class
+  animal.move();
+}
+
+console.log("\n=== Method Overriding ===");
+
+// Tạo array các animals khác nhau
+const animals = [new Dog("Buddy"), new Cat("Whiskers"), new Bird("Tweety")];
+
+// Cùng method call, khác behavior - POLYMORPHISM!
+animals.forEach((animal) => {
+  makeAnimalSpeak(animal);
+  console.log("---");
+});
+
+// Output:
+// Buddy: Woof! Woof!
+// Buddy runs on 4 legs
+// ---
+// Whiskers: Meow! Meow!
+// Whiskers walks gracefully
+// ---
+// Tweety: Tweet! Tweet!
+// Tweety flies in the sky
+// ---
+```
+
+```javascript
+// Ví dụ thực tế: Payment System với Polymorphism
+class Payment {
+  constructor(amount) {
+    this.amount = amount;
+  }
+
+  process() {
+    throw new Error("process() must be implemented");
+  }
+
+  refund() {
+    throw new Error("refund() must be implemented");
+  }
+}
+
+class CreditCardPayment extends Payment {
+  constructor(amount, cardNumber) {
+    super(amount);
+    this.cardNumber = cardNumber;
+  }
+
+  process() {
+    console.log(`Processing credit card payment: $${this.amount}`);
+    console.log(`Card: ****${this.cardNumber.slice(-4)}`);
+  }
+
+  refund() {
+    console.log(`Refunding $${this.amount} to credit card`);
+  }
+}
+
+class PayPalPayment extends Payment {
+  constructor(amount, email) {
+    super(amount);
+    this.email = email;
+  }
+
+  process() {
+    console.log(`Processing PayPal payment: $${this.amount}`);
+    console.log(`PayPal account: ${this.email}`);
+  }
+
+  refund() {
+    console.log(`Refunding $${this.amount} to PayPal account`);
+  }
+}
+
+class CryptoPayment extends Payment {
+  constructor(amount, walletAddress) {
+    super(amount);
+    this.walletAddress = walletAddress;
+  }
+
+  process() {
+    console.log(`Processing crypto payment: $${this.amount}`);
+    console.log(`Wallet: ${this.walletAddress.slice(0, 10)}...`);
+  }
+
+  refund() {
+    console.log(`Refunding $${this.amount} to crypto wallet`);
+  }
+}
+
+// Payment Processor - sử dụng Polymorphism
+class PaymentProcessor {
+  processPayment(payment) {
+    // Nhận bất kỳ loại Payment nào
+    payment.process();
+  }
+
+  processMultiple(payments) {
+    payments.forEach((payment) => {
+      payment.process();
+      console.log("---");
+    });
+  }
+}
+
+// Sử dụng
+const processor = new PaymentProcessor();
+
+const payments = [
+  new CreditCardPayment(100, "1234567890123456"),
+  new PayPalPayment(50, "john@example.com"),
+  new CryptoPayment(200, "0x1234567890abcdef"),
+];
+
+console.log("=== Payment Processing ===");
+processor.processMultiple(payments);
+```
+
+---
+
+### So sánh OOP trong Java, C++, JavaScript
+
+| Tính năng            | Java                             | C++                              | JavaScript                         |
+| -------------------- | -------------------------------- | -------------------------------- | ---------------------------------- |
+| **Class**            | `class` keyword                  | `class` keyword                  | `class` keyword (ES6+)             |
+| **Encapsulation**    | `private`, `protected`, `public` | `private`, `protected`, `public` | `#` private fields (ES2022)        |
+| **Abstraction**      | `abstract class`, `interface`    | Pure virtual functions           | Simulated với `throw Error`        |
+| **Inheritance**      | `extends` (single)               | `:` (multiple)                   | `extends` (single)                 |
+| **Polymorphism**     | Overloading + Overriding         | Overloading + Overriding         | Overriding (overloading simulated) |
+| **Interface**        | `interface` keyword              | Abstract class                   | Duck typing                        |
+| **Access Modifiers** | 4 levels                         | 3 levels                         | `#` private only                   |
 
 ---
 
