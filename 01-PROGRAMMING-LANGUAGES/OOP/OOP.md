@@ -130,20 +130,280 @@ Object person2 = Trần Thị B (người cụ thể)
 
 ![4 tính chất OOP](../../09-RESOURCES/images/image19.png)
 
-OOP có 4 tính chất cơ bản (4 trụ cột):
+OOP có 4 tính chất cơ bản (4 trụ cột) - thường được gọi là **4 Pillars of OOP**:
 
-1. **Encapsulation** (Tính đóng gói)
-2. **Abstraction** (Tính trừu tượng)
-3. **Inheritance** (Tính kế thừa)
-4. **Polymorphism** (Tính đa hình)
+| #   | Tính chất         | Tiếng Việt      | Ý nghĩa cốt lõi                                   |
+| --- | ----------------- | --------------- | ------------------------------------------------- |
+| 1   | **Encapsulation** | Tính đóng gói   | Gói gọn data và methods, kiểm soát truy cập       |
+| 2   | **Abstraction**   | Tính trừu tượng | Ẩn chi tiết phức tạp, chỉ hiện interface đơn giản |
+| 3   | **Inheritance**   | Tính kế thừa    | Class con thừa hưởng từ class cha                 |
+| 4   | **Polymorphism**  | Tính đa hình    | Một hành động, nhiều cách thực hiện               |
+
+### Tổng quan 4 tính chất
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                         4 PILLARS OF OOP                                │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                         │
+│  ┌─────────────────┐    ┌─────────────────┐                            │
+│  │  ENCAPSULATION  │    │   ABSTRACTION   │                            │
+│  │  ═══════════════│    │  ═══════════════│                            │
+│  │                 │    │                 │                            │
+│  │  "Đóng hộp"     │    │  "Giấu phức tạp"│                            │
+│  │                 │    │                 │                            │
+│  │  • private data │    │  • abstract     │                            │
+│  │  • getter/setter│    │  • interface    │                            │
+│  │  • validation   │    │  • hide details │                            │
+│  │                 │    │                 │                            │
+│  │  Bảo vệ dữ liệu │    │  Đơn giản hóa   │                            │
+│  └─────────────────┘    └─────────────────┘                            │
+│                                                                         │
+│  ┌─────────────────┐    ┌─────────────────┐                            │
+│  │   INHERITANCE   │    │  POLYMORPHISM   │                            │
+│  │  ═══════════════│    │  ═══════════════│                            │
+│  │                 │    │                 │                            │
+│  │  "Con giống cha"│    │  "Nhiều hình"   │                            │
+│  │                 │    │                 │                            │
+│  │  • extends      │    │  • overloading  │                            │
+│  │  • super class  │    │  • overriding   │                            │
+│  │  • reuse code   │    │  • flexibility  │                            │
+│  │                 │    │                 │                            │
+│  │  Tái sử dụng    │    │  Linh hoạt      │                            │
+│  └─────────────────┘    └─────────────────┘                            │
+│                                                                         │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+### Mối quan hệ giữa 4 tính chất
+
+```
+                    ┌─────────────────┐
+                    │   ABSTRACTION   │
+                    │ (Thiết kế tổng  │
+                    │   quan, ẩn      │
+                    │   complexity)   │
+                    └────────┬────────┘
+                             │
+              ┌──────────────┼──────────────┐
+              │              │              │
+              ▼              ▼              ▼
+     ┌────────────┐  ┌────────────┐  ┌────────────┐
+     │ENCAPSULATION│  │INHERITANCE │  │POLYMORPHISM│
+     │(Bảo vệ data)│  │(Tái sử dụng)│  │(Linh hoạt) │
+     └────────────┘  └────────────┘  └────────────┘
+              │              │              │
+              └──────────────┼──────────────┘
+                             │
+                             ▼
+                    ┌─────────────────┐
+                    │   CODE CHẤT    │
+                    │   LƯỢNG CAO    │
+                    │ • Maintainable │
+                    │ • Scalable     │
+                    │ • Reusable     │
+                    └─────────────────┘
+```
+
+### Ví dụ tổng hợp: Hệ thống quản lý nhân viên
+
+```java
+// ABSTRACTION: Định nghĩa interface chung
+interface Workable {
+    void work();
+    double calculateSalary();
+}
+
+// ENCAPSULATION: Đóng gói data, kiểm soát truy cập
+abstract class Employee implements Workable {
+    private String id;           // private - ẩn giấu
+    private String name;
+    private double baseSalary;
+
+    // Constructor
+    public Employee(String id, String name, double baseSalary) {
+        this.id = id;
+        this.name = name;
+        this.baseSalary = baseSalary;
+    }
+
+    // Getter - kiểm soát đọc
+    public String getName() { return name; }
+    public double getBaseSalary() { return baseSalary; }
+
+    // Setter với validation - kiểm soát ghi
+    public void setBaseSalary(double salary) {
+        if (salary > 0) {
+            this.baseSalary = salary;
+        }
+    }
+
+    // ABSTRACTION: Method chung, implementation ở subclass
+    public abstract void work();
+    public abstract double calculateSalary();
+}
+
+// INHERITANCE: Developer kế thừa từ Employee
+class Developer extends Employee {
+    private String programmingLanguage;
+    private int projectBonus;
+
+    public Developer(String id, String name, double baseSalary, String lang) {
+        super(id, name, baseSalary);  // Gọi constructor cha
+        this.programmingLanguage = lang;
+    }
+
+    // POLYMORPHISM (Override): Cùng method, behavior khác
+    @Override
+    public void work() {
+        System.out.println(getName() + " is coding in " + programmingLanguage);
+    }
+
+    @Override
+    public double calculateSalary() {
+        return getBaseSalary() + projectBonus;
+    }
+}
+
+// INHERITANCE: Manager kế thừa từ Employee
+class Manager extends Employee {
+    private int teamSize;
+    private double managementBonus;
+
+    public Manager(String id, String name, double baseSalary, int teamSize) {
+        super(id, name, baseSalary);
+        this.teamSize = teamSize;
+        this.managementBonus = teamSize * 100; // $100 per team member
+    }
+
+    // POLYMORPHISM (Override): Cùng method, behavior khác
+    @Override
+    public void work() {
+        System.out.println(getName() + " is managing a team of " + teamSize);
+    }
+
+    @Override
+    public double calculateSalary() {
+        return getBaseSalary() + managementBonus;
+    }
+}
+
+// Sử dụng POLYMORPHISM
+class PayrollSystem {
+    // Nhận bất kỳ Employee nào (Developer, Manager, ...)
+    public void processPayroll(List<Employee> employees) {
+        for (Employee emp : employees) {
+            emp.work();                    // Polymorphism - mỗi loại work khác nhau
+            double salary = emp.calculateSalary(); // Polymorphism
+            System.out.println("Salary: $" + salary);
+        }
+    }
+}
+
+// Main
+public class Main {
+    public static void main(String[] args) {
+        List<Employee> employees = new ArrayList<>();
+        employees.add(new Developer("D001", "John", 5000, "Java"));
+        employees.add(new Manager("M001", "Alice", 7000, 5));
+
+        PayrollSystem payroll = new PayrollSystem();
+        payroll.processPayroll(employees);
+
+        // Output:
+        // John is coding in Java
+        // Salary: $5000.0
+        // Alice is managing a team of 5
+        // Salary: $7500.0
+    }
+}
+```
+
+**Phân tích ví dụ trên:**
+
+| Tính chất         | Áp dụng trong ví dụ                                      |
+| ----------------- | -------------------------------------------------------- |
+| **Encapsulation** | `private` fields, getter/setter với validation           |
+| **Abstraction**   | `interface Workable`, `abstract class Employee`          |
+| **Inheritance**   | `Developer extends Employee`, `Manager extends Employee` |
+| **Polymorphism**  | `work()` và `calculateSalary()` được override khác nhau  |
 
 ---
 
 ### 3.1 Encapsulation (Tính đóng gói)
 
-#### Định nghĩa
+#### Định nghĩa đầy đủ
 
-**Encapsulation** là kỹ thuật **gom nhóm** các attributes và methods liên quan vào một Object, đồng thời **ẩn giấu** (hide) các chi tiết bên trong.
+**Encapsulation** (Tính đóng gói) là một trong những nguyên tắc cơ bản nhất của OOP. Nó bao gồm 2 khía cạnh chính:
+
+1. **Bundling** (Gói gọn): Gom nhóm các **data** (attributes) và **methods** liên quan vào trong một đơn vị duy nhất gọi là **class/object**.
+
+2. **Information Hiding** (Ẩn giấu thông tin): Hạn chế quyền truy cập trực tiếp vào một số thành phần của object, chỉ cho phép truy cập thông qua các **public methods** (getter/setter).
+
+#### Tại sao gọi là "Đóng gói"?
+
+```
+Hình dung như một viên thuốc con nhộng (capsule):
+┌─────────────────────────────────────┐
+│           CAPSULE (Class)           │
+│  ┌─────────────────────────────┐   │
+│  │     Bên trong (private)     │   │
+│  │  • Thành phần hoạt chất     │   │
+│  │  • Cấu trúc phức tạp        │   │
+│  │  • Chi tiết implementation  │   │
+│  └─────────────────────────────┘   │
+│                                     │
+│  Bên ngoài (public interface):      │
+│  • Uống thuốc → Khỏi bệnh           │
+│  • Không cần biết bên trong có gì   │
+└─────────────────────────────────────┘
+```
+
+#### Các thành phần của Encapsulation
+
+```java
+class EncapsulatedClass {
+    // 1. PRIVATE DATA - Ẩn giấu bên trong
+    private String sensitiveData;
+    private int internalState;
+
+    // 2. PUBLIC INTERFACE - Cửa ngõ truy cập
+    public String getData() {           // Getter
+        return sensitiveData;
+    }
+
+    public void setData(String data) {  // Setter với validation
+        if (isValid(data)) {
+            this.sensitiveData = data;
+        }
+    }
+
+    // 3. PRIVATE METHODS - Logic nội bộ
+    private boolean isValid(String data) {
+        return data != null && !data.isEmpty();
+    }
+
+    // 4. PUBLIC METHODS - Hành vi công khai
+    public void performAction() {
+        // Sử dụng private data và methods
+        internalState++;
+        processInternal();
+    }
+
+    private void processInternal() {
+        // Logic phức tạp ẩn bên trong
+    }
+}
+```
+
+#### Nguyên tắc của Encapsulation
+
+| Nguyên tắc                 | Mô tả                         | Ví dụ                          |
+| -------------------------- | ----------------------------- | ------------------------------ |
+| **Data Hiding**            | Đặt fields là `private`       | `private double balance;`      |
+| **Controlled Access**      | Dùng getter/setter            | `getBalance()`, `setBalance()` |
+| **Validation**             | Kiểm tra trước khi thay đổi   | `if (amount > 0)`              |
+| **Single Point of Access** | Một cách duy nhất để truy cập | Chỉ qua methods                |
 
 #### Mục đích
 
@@ -301,9 +561,77 @@ class GoodAccount {
 
 ### 3.2 Abstraction (Tính trừu tượng)
 
-#### Định nghĩa
+#### Định nghĩa đầy đủ
 
-**Abstraction** là kỹ thuật **đơn giản hóa** bằng cách chỉ hiển thị những thông tin **cần thiết** và **ẩn giấu** các chi tiết phức tạp.
+**Abstraction** (Tính trừu tượng) là quá trình **ẩn giấu các chi tiết triển khai phức tạp** và chỉ **hiển thị những tính năng cần thiết** cho người dùng. Nó tập trung vào **"CÁI GÌ"** (what) thay vì **"NHƯ THẾ NÀO"** (how).
+
+#### Tại sao gọi là "Trừu tượng"?
+
+```
+Trừu tượng = Lấy ra những đặc điểm CHUNG, BỎ QUA chi tiết CỤ THỂ
+
+Ví dụ: Khái niệm "Xe" là trừu tượng
+┌─────────────────────────────────────────────────────┐
+│                    "XE" (Abstract)                  │
+│                                                     │
+│  Đặc điểm chung (abstract):                        │
+│  • Có bánh xe                                       │
+│  • Có thể di chuyển                                 │
+│  • Có người điều khiển                              │
+│                                                     │
+│  Chi tiết cụ thể (concrete) - KHÔNG quan tâm:      │
+│  • Xe máy: 2 bánh, động cơ xăng                    │
+│  • Ô tô: 4 bánh, động cơ điện/xăng                 │
+│  • Xe đạp: 2 bánh, sức người                       │
+└─────────────────────────────────────────────────────┘
+```
+
+#### Hai khía cạnh của Abstraction
+
+| Khía cạnh               | Mô tả                            | Cách thực hiện              |
+| ----------------------- | -------------------------------- | --------------------------- |
+| **Data Abstraction**    | Ẩn giấu cách data được lưu trữ   | Sử dụng abstract data types |
+| **Process Abstraction** | Ẩn giấu cách hoạt động bên trong | Sử dụng abstract methods    |
+
+#### Abstraction trong thực tế
+
+```
+┌─────────────────────────────────────────────────────┐
+│                    ATM MACHINE                      │
+├─────────────────────────────────────────────────────┤
+│                                                     │
+│  Người dùng THẤY (Abstract Interface):             │
+│  ┌─────────────────────────────────────┐           │
+│  │  [Rút tiền]  [Gửi tiền]  [Số dư]   │           │
+│  └─────────────────────────────────────┘           │
+│                                                     │
+│  Người dùng KHÔNG THẤY (Hidden Implementation):    │
+│  ┌─────────────────────────────────────┐           │
+│  │  • Kết nối database                 │           │
+│  │  • Mã hóa giao dịch                 │           │
+│  │  • Xác thực thẻ                     │           │
+│  │  • Giao tiếp với ngân hàng          │           │
+│  │  • Cơ chế đếm tiền                  │           │
+│  │  • Bảo mật, logging                 │           │
+│  └─────────────────────────────────────┘           │
+│                                                     │
+└─────────────────────────────────────────────────────┘
+```
+
+#### Levels of Abstraction
+
+```
+High Level (Trừu tượng cao)
+    │
+    │   interface Vehicle { void move(); }
+    │           ↓
+    │   abstract class Car implements Vehicle { }
+    │           ↓
+    │   class Tesla extends Car { void move() {...} }
+    │           ↓
+    ▼   Actual implementation code
+Low Level (Chi tiết cụ thể)
+```
 
 #### Mục đích
 
@@ -540,14 +868,89 @@ abstract class ATM {
 
 ### 3.3 Inheritance (Tính kế thừa)
 
-#### Định nghĩa
+#### Định nghĩa đầy đủ
 
-**Inheritance** là cơ chế cho phép một class **kế thừa** (inherit) các attributes và methods từ class khác.
+**Inheritance** (Tính kế thừa) là cơ chế cho phép một class (class con) **thừa hưởng** các attributes và methods từ một class khác (class cha). Class con có thể:
 
-#### Thuật ngữ
+1. **Sử dụng** các thuộc tính và phương thức của class cha
+2. **Mở rộng** bằng cách thêm thuộc tính/phương thức mới
+3. **Ghi đè** (override) các phương thức của class cha
 
-- **Parent Class** / **Base Class** / **Super Class**: Class cha
-- **Child Class** / **Derived Class** / **Sub Class**: Class con
+#### Tại sao gọi là "Kế thừa"?
+
+```
+Giống như kế thừa trong gia đình:
+┌─────────────────────────────────────────────────────┐
+│                                                     │
+│  👴 Ông bà (Grandparent Class)                     │
+│  • Họ: Nguyễn                                       │
+│  • Truyền thống gia đình                           │
+│           │                                         │
+│           ▼ (kế thừa)                              │
+│  👨 Cha mẹ (Parent Class)                          │
+│  • Họ: Nguyễn (kế thừa)                            │
+│  • Truyền thống (kế thừa)                          │
+│  • Nghề nghiệp (mới)                               │
+│           │                                         │
+│           ▼ (kế thừa)                              │
+│  👶 Con cái (Child Class)                          │
+│  • Họ: Nguyễn (kế thừa)                            │
+│  • Truyền thống (kế thừa)                          │
+│  • Nghề nghiệp (có thể khác - override)            │
+│  • Sở thích riêng (mới)                            │
+│                                                     │
+└─────────────────────────────────────────────────────┘
+```
+
+#### Thuật ngữ quan trọng
+
+| Thuật ngữ        | Tên khác                 | Ý nghĩa                           |
+| ---------------- | ------------------------ | --------------------------------- |
+| **Parent Class** | Base Class, Super Class  | Class cha - class được kế thừa    |
+| **Child Class**  | Derived Class, Sub Class | Class con - class kế thừa         |
+| **extends**      | -                        | Keyword để kế thừa (Java)         |
+| **super**        | -                        | Tham chiếu đến class cha          |
+| **@Override**    | -                        | Annotation đánh dấu method ghi đè |
+
+#### Cơ chế kế thừa
+
+```java
+class Parent {
+    // Những gì CON được kế thừa:
+    public String publicField;      // ✅ Kế thừa
+    protected String protectedField; // ✅ Kế thừa
+    String defaultField;            // ✅ Kế thừa (cùng package)
+    private String privateField;    // ❌ KHÔNG kế thừa
+
+    public void publicMethod() {}   // ✅ Kế thừa
+    protected void protectedMethod() {} // ✅ Kế thừa
+    private void privateMethod() {} // ❌ KHÔNG kế thừa
+}
+
+class Child extends Parent {
+    // Tự động có: publicField, protectedField, defaultField
+    // Tự động có: publicMethod(), protectedMethod()
+
+    // Có thể thêm mới
+    private String childField;
+
+    // Có thể override
+    @Override
+    public void publicMethod() {
+        super.publicMethod(); // Gọi method của cha
+        // Thêm logic mới
+    }
+}
+```
+
+#### Bảng tổng hợp Access Modifiers và Inheritance
+
+| Modifier    | Cùng Class | Cùng Package | Subclass | Khác Package |
+| ----------- | ---------- | ------------ | -------- | ------------ |
+| `public`    | ✅         | ✅           | ✅       | ✅           |
+| `protected` | ✅         | ✅           | ✅       | ❌           |
+| `default`   | ✅         | ✅           | ❌       | ❌           |
+| `private`   | ✅         | ❌           | ❌       | ❌           |
 
 #### Mục đích
 
@@ -824,20 +1227,122 @@ Composition (Has-a):
 
 ### 3.4 Polymorphism (Tính đa hình)
 
-#### Định nghĩa
+#### Định nghĩa đầy đủ
 
-**Polymorphism** = "Poly" (nhiều) + "Morph" (hình dạng)
+**Polymorphism** = "Poly" (nhiều) + "Morph" (hình dạng) = **Nhiều hình dạng**
 
-Polymorphism cho phép một Object có thể có **nhiều hình dạng** và **hành vi** khác nhau.
+Polymorphism là khả năng của một đối tượng có thể **thể hiện nhiều hình thái khác nhau**. Cùng một hành động (method) nhưng có thể có **nhiều cách thực hiện khác nhau** tùy thuộc vào đối tượng thực thi.
 
-#### Phân loại
+#### Tại sao gọi là "Đa hình"?
+
+```
+Ví dụ: Hành động "Nói" (speak)
+┌─────────────────────────────────────────────────────┐
+│                                                     │
+│  Cùng một hành động: speak()                       │
+│                                                     │
+│  ┌─────────┐  ┌─────────┐  ┌─────────┐            │
+│  │  Người  │  │   Chó   │  │   Mèo   │            │
+│  │ speak() │  │ speak() │  │ speak() │            │
+│  └────┬────┘  └────┬────┘  └────┬────┘            │
+│       │            │            │                  │
+│       ▼            ▼            ▼                  │
+│   "Xin chào"   "Gâu gâu"   "Meo meo"              │
+│                                                     │
+│  → Cùng method name, KHÁC behavior                 │
+│  → Đây chính là POLYMORPHISM                       │
+│                                                     │
+└─────────────────────────────────────────────────────┘
+```
+
+#### Hai loại Polymorphism
+
+```
+                    POLYMORPHISM
+                         │
+          ┌──────────────┴──────────────┐
+          │                             │
+          ▼                             ▼
+┌─────────────────────┐    ┌─────────────────────┐
+│ STATIC POLYMORPHISM │    │DYNAMIC POLYMORPHISM │
+│   (Compile-time)    │    │    (Runtime)        │
+├─────────────────────┤    ├─────────────────────┤
+│                     │    │                     │
+│ • Method Overloading│    │ • Method Overriding │
+│ • Operator Overload │    │ • Virtual methods   │
+│                     │    │                     │
+│ Quyết định lúc      │    │ Quyết định lúc      │
+│ COMPILE             │    │ RUNTIME             │
+│                     │    │                     │
+│ Cùng class          │    │ Parent-Child class  │
+│ Khác parameters     │    │ Cùng signature      │
+│                     │    │                     │
+└─────────────────────┘    └─────────────────────┘
+```
+
+#### Bảng so sánh 2 loại Polymorphism
+
+| Tiêu chí        | Static (Overloading) | Dynamic (Overriding)        |
+| --------------- | -------------------- | --------------------------- |
+| **Thời điểm**   | Compile-time         | Runtime                     |
+| **Vị trí**      | Cùng một class       | Parent và Child class       |
+| **Method name** | Giống nhau           | Giống nhau                  |
+| **Parameters**  | KHÁC nhau            | GIỐNG nhau                  |
+| **Return type** | Có thể khác          | Phải giống (hoặc covariant) |
+| **Keyword**     | Không cần            | `@Override`                 |
+| **Binding**     | Early binding        | Late binding                |
+
+#### Ví dụ minh họa sự khác biệt
+
+```java
+class Example {
+    // ═══════════════════════════════════════════════
+    // OVERLOADING (Static Polymorphism)
+    // Cùng class, cùng tên, KHÁC tham số
+    // ═══════════════════════════════════════════════
+
+    void print(String s) {
+        System.out.println("String: " + s);
+    }
+
+    void print(int i) {           // Khác kiểu tham số
+        System.out.println("Int: " + i);
+    }
+
+    void print(String s, int n) { // Khác số lượng tham số
+        for (int i = 0; i < n; i++) {
+            System.out.println(s);
+        }
+    }
+}
+
+// ═══════════════════════════════════════════════
+// OVERRIDING (Dynamic Polymorphism)
+// Parent-Child, cùng tên, CÙNG tham số
+// ═══════════════════════════════════════════════
+
+class Animal {
+    void speak() {
+        System.out.println("Animal speaks");
+    }
+}
+
+class Dog extends Animal {
+    @Override
+    void speak() {              // Cùng signature với parent
+        System.out.println("Woof!");
+    }
+}
+
+class Cat extends Animal {
+    @Override
+    void speak() {              // Cùng signature với parent
+        System.out.println("Meow!");
+    }
+}
+```
 
 ![Polymorphism](https://statics.cdn.200lab.io/2023/08/oop-polymorphism.jpg)
-
-1. **Static Polymorphism** (Compile-time)
-   - Method Overloading
-2. **Dynamic Polymorphism** (Runtime)
-   - Method Overriding
 
 ---
 
