@@ -24,6 +24,8 @@
 
 ### Internet vs World Wide Web
 
+Internet là một mạng lưới toàn cầu kết nối hàng tỷ thiết bị và mạng máy tính, cho phép trao đổi thông tin và dữ liệu. Nó hoạt động dựa trên các giao thức truyền tải dữ liệu chung như TCP/IP và cho phép người dùng truy cập thông tin, giao tiếp, mua sắm, học tập và giải trí trực tuyến. Internet có thể được coi là một hệ thống kết nối khổng lồ, cho phép mọi người kết nối với nhau bất kể khoảng cách địa lý.
+
 | Khái niệm      | Internet                                | World Wide Web (WWW)             |
 | -------------- | --------------------------------------- | -------------------------------- |
 | **Định nghĩa** | Mạng lưới toàn cầu kết nối các máy tính | Hệ thống thông tin trên Internet |
