@@ -1,8 +1,29 @@
 # Performance & Scaling trong Node.js
 
-## 1. Clustering
+## 1. Khái niệm
 
-Node.js chạy single-threaded, clustering cho phép tận dụng multi-core CPU.
+### Tại sao cần quan tâm Performance?
+
+- **User Experience:** Response nhanh = user hài lòng
+- **Cost:** Tối ưu = ít server = tiết kiệm tiền
+- **Scalability:** Handle được nhiều users hơn
+
+### Scaling là gì?
+
+| Loại                   | Mô tả                      | Ví dụ                |
+| ---------------------- | -------------------------- | -------------------- |
+| **Vertical Scaling**   | Nâng cấp server (CPU, RAM) | 2 CPU → 8 CPU        |
+| **Horizontal Scaling** | Thêm nhiều servers         | 1 server → 4 servers |
+
+## 2. Clustering
+
+### Khái niệm
+
+**Clustering** cho phép tận dụng multi-core CPU bằng cách chạy nhiều Node.js processes.
+
+Node.js mặc định chạy single-threaded, chỉ dùng 1 CPU core. Clustering tạo nhiều worker processes, mỗi worker dùng 1 core.
+
+### Implementation
 
 ```javascript
 const cluster = require("cluster");
@@ -11,21 +32,25 @@ const numCPUs = require("os").cpus().length;
 
 if (cluster.isPrimary) {
   console.log(`Primary ${process.pid} is running`);
+  console.log(`Forking ${numCPUs} workers...`);
 
-  // Fork workers
+  // Fork workers (1 per CPU core)
   for (let i = 0; i < numCPUs; i++) {
     cluster.fork();
   }
 
+  // Restart worker nếu crash
   cluster.on("exit", (worker, code, signal) => {
     console.log(`Worker ${worker.process.pid} died`);
-    cluster.fork(); // Restart worker
+    console.log("Starting a new worker...");
+    cluster.fork();
   });
 } else {
+  // Workers share TCP connection
   http
     .createServer((req, res) => {
       res.writeHead(200);
-      res.end("Hello World\n");
+      res.end(`Hello from worker ${process.pid}\n`);
     })
     .listen(8000);
 
@@ -33,25 +58,22 @@ if (cluster.isPrimary) {
 }
 ```
 
-### PM2 (Production Process Manager)
+### PM2 - Production Process Manager
 
 ```bash
 npm install pm2 -g
 
-# Start with cluster mode
+# Start với cluster mode
 pm2 start app.js -i max  # max = số CPU cores
 pm2 start app.js -i 4    # 4 instances
 
 # Commands
-pm2 list
-pm2 logs
-pm2 monit
-pm2 reload app    # Zero-downtime reload
+pm2 list              # Xem processes
+pm2 logs              # Xem logs
+pm2 monit             # Monitor realtime
+pm2 reload app        # Zero-downtime reload
 pm2 stop app
 pm2 delete app
-
-# Ecosystem file
-pm2 ecosystem
 ```
 
 ```javascript
@@ -59,9 +81,9 @@ pm2 ecosystem
 module.exports = {
   apps: [
     {
-      name: "app",
+      name: "my-app",
       script: "./app.js",
-      instances: "max",
+      instances: "max", // Cluster mode
       exec_mode: "cluster",
       env: {
         NODE_ENV: "development",
@@ -72,23 +94,40 @@ module.exports = {
     },
   ],
 };
+
+// pm2 start ecosystem.config.js --env production
 ```
 
-## 2. Worker Threads
+## 3. Worker Threads
 
-Cho CPU-intensive tasks (không block event loop).
+### Khái niệm
+
+**Worker Threads** cho phép chạy JavaScript trong threads riêng biệt, phù hợp cho CPU-intensive tasks mà không block Event Loop.
+
+### Khi nào dùng?
+
+| Clustering         | Worker Threads                |
+| ------------------ | ----------------------------- |
+| Scale HTTP servers | CPU-intensive tasks           |
+| Nhiều processes    | Nhiều threads trong 1 process |
+| Không share memory | Có thể share memory           |
+
+### Implementation
 
 ```javascript
+// main.js
 const { Worker, isMainThread, parentPort, workerData } = require("worker_threads");
 
 if (isMainThread) {
   // Main thread
+  console.log("Main thread starting...");
+
   const worker = new Worker(__filename, {
-    workerData: { num: 42 },
+    workerData: { num: 40 },
   });
 
   worker.on("message", (result) => {
-    console.log("Result:", result);
+    console.log("Fibonacci result:", result);
   });
 
   worker.on("error", (err) => {
@@ -98,13 +137,20 @@ if (isMainThread) {
   worker.on("exit", (code) => {
     console.log("Worker exited with code:", code);
   });
+
+  // Main thread vẫn responsive
+  console.log("Main thread still running...");
 } else {
   // Worker thread
   const { num } = workerData;
 
   // CPU-intensive task
-  const result = heavyComputation(num);
+  function fibonacci(n) {
+    if (n <= 1) return n;
+    return fibonacci(n - 1) + fibonacci(n - 2);
+  }
 
+  const result = fibonacci(num);
   parentPort.postMessage(result);
 }
 ```
@@ -114,31 +160,47 @@ if (isMainThread) {
 ```javascript
 const { StaticPool } = require("node-worker-threads-pool");
 
+// Tạo pool với 4 workers
 const pool = new StaticPool({
   size: 4,
-  task: "./worker.js",
+  task: "./heavy-task.js",
 });
 
-// Use pool
-const result = await pool.exec({ data: "input" });
+// Sử dụng
+async function processData(data) {
+  const result = await pool.exec(data);
+  return result;
+}
 ```
 
-## 3. Caching Strategies
+## 4. Caching
 
-### In-Memory Cache (node-cache)
+### Khái niệm
+
+**Caching** lưu trữ kết quả của operations tốn kém để tái sử dụng, giảm load cho database và tăng tốc response.
+
+### In-Memory Cache
 
 ```javascript
 const NodeCache = require("node-cache");
-const cache = new NodeCache({ stdTTL: 600 }); // 10 minutes
+
+const cache = new NodeCache({
+  stdTTL: 600, // 10 phút
+  checkperiod: 120, // Check expired mỗi 2 phút
+});
 
 async function getUser(id) {
   const cacheKey = `user:${id}`;
 
   // Check cache
   const cached = cache.get(cacheKey);
-  if (cached) return cached;
+  if (cached) {
+    console.log("Cache hit!");
+    return cached;
+  }
 
-  // Fetch from DB
+  // Cache miss - fetch from DB
+  console.log("Cache miss, fetching from DB...");
   const user = await User.findById(id);
 
   // Store in cache
@@ -159,12 +221,14 @@ async function getUser(id) {
 
   // Check cache
   const cached = await redis.get(cacheKey);
-  if (cached) return JSON.parse(cached);
+  if (cached) {
+    return JSON.parse(cached);
+  }
 
   // Fetch from DB
   const user = await User.findById(id);
 
-  // Store in cache (with TTL)
+  // Store in cache với TTL
   await redis.setex(cacheKey, 600, JSON.stringify(user));
 
   return user;
@@ -173,7 +237,7 @@ async function getUser(id) {
 // Cache invalidation
 async function updateUser(id, data) {
   await User.findByIdAndUpdate(id, data);
-  await redis.del(`user:${id}`);
+  await redis.del(`user:${id}`); // Xóa cache
 }
 ```
 
@@ -181,38 +245,27 @@ async function updateUser(id, data) {
 
 ```javascript
 // Cache-Aside (Lazy Loading)
-async function getData(key) {
-  let data = await cache.get(key);
-  if (!data) {
-    data = await db.get(key);
-    await cache.set(key, data);
-  }
-  return data;
-}
+// Đọc: Check cache → Miss → Fetch DB → Store cache
+// Ghi: Update DB → Delete cache
 
 // Write-Through
-async function setData(key, value) {
-  await db.set(key, value);
-  await cache.set(key, value);
-}
+// Ghi: Update DB → Update cache (đồng thời)
 
-// Write-Behind (Async)
-async function setData(key, value) {
-  await cache.set(key, value);
-  queue.add({ key, value }); // Process later
-}
+// Write-Behind
+// Ghi: Update cache → Queue → Update DB (async)
 ```
 
-## 4. Database Optimization
+## 5. Database Optimization
 
 ### Connection Pooling
 
 ```javascript
 // PostgreSQL
 const { Pool } = require("pg");
+
 const pool = new Pool({
-  max: 20,
-  idleTimeoutMillis: 30000,
+  max: 20, // Max connections
+  idleTimeoutMillis: 30000, // Close idle sau 30s
   connectionTimeoutMillis: 2000,
 });
 
@@ -224,17 +277,17 @@ mongoose.connect(uri, {
 });
 ```
 
-### Query Optimization
+### N+1 Query Problem
 
 ```javascript
-// ❌ N+1 Problem
-const users = await User.find();
+// ❌ N+1 Problem: 1 + N queries
+const users = await User.find(); // 1 query
 for (const user of users) {
   const posts = await Post.find({ authorId: user.id }); // N queries!
 }
 
-// ✅ Eager Loading
-const users = await User.find().populate("posts"); // 2 queries
+// ✅ Eager Loading: 2 queries
+const users = await User.find().populate("posts");
 
 // ✅ Batch Loading
 const userIds = users.map((u) => u.id);
@@ -253,7 +306,7 @@ userSchema.index({ name: "text", bio: "text" }); // Text search
 userSchema.index({ status: 1, createdAt: -1 });
 ```
 
-## 5. Memory Management
+## 6. Memory Management
 
 ### Detect Memory Leaks
 
@@ -261,7 +314,7 @@ userSchema.index({ status: 1, createdAt: -1 });
 // Check memory usage
 const used = process.memoryUsage();
 console.log({
-  rss: `${Math.round(used.rss / 1024 / 1024)} MB`,
+  rss: `${Math.round(used.rss / 1024 / 1024)} MB`, // Total memory
   heapTotal: `${Math.round(used.heapTotal / 1024 / 1024)} MB`,
   heapUsed: `${Math.round(used.heapUsed / 1024 / 1024)} MB`,
   external: `${Math.round(used.external / 1024 / 1024)} MB`,
@@ -269,57 +322,52 @@ console.log({
 
 // Heap snapshot
 const v8 = require("v8");
-v8.writeHeapSnapshot();
+v8.writeHeapSnapshot(); // Tạo file .heapsnapshot
 ```
 
 ### Common Memory Leaks
 
 ```javascript
-// ❌ Global variables
-global.cache = []; // Grows forever
+// ❌ Global variables tích tụ
+global.cache = [];
+global.cache.push(data); // Grows forever
 
-// ❌ Event listeners not removed
+// ❌ Event listeners không remove
 emitter.on("event", handler);
 // Fix: emitter.off('event', handler);
 
-// ❌ Closures holding references
+// ❌ Closures giữ references
 function createLeak() {
   const bigData = new Array(1000000);
-  return () => bigData.length; // bigData never GC'd
+  return () => bigData.length; // bigData không được GC
 }
 
-// ❌ Timers not cleared
+// ❌ Timers không clear
 const interval = setInterval(() => {}, 1000);
 // Fix: clearInterval(interval);
 ```
 
-## 6. Streams for Large Data
+## 7. Streams cho Large Data
 
 ```javascript
 const fs = require("fs");
-const { Transform } = require("stream");
 
-// ❌ Bad - loads entire file into memory
-const data = fs.readFileSync("large-file.csv");
+// ❌ Bad: Load toàn bộ file vào memory
+const data = fs.readFileSync("large-file.csv"); // 2GB in memory!
 
-// ✅ Good - streams chunk by chunk
+// ✅ Good: Stream từng chunk
 const readStream = fs.createReadStream("large-file.csv");
 const writeStream = fs.createWriteStream("output.csv");
 
-const transform = new Transform({
-  transform(chunk, encoding, callback) {
-    // Process chunk
-    const processed = chunk.toString().toUpperCase();
-    callback(null, processed);
-  },
-});
+readStream.pipe(transformStream).pipe(writeStream);
 
-readStream.pipe(transform).pipe(writeStream);
+// Pipeline với error handling
+const { pipeline } = require("stream/promises");
+
+await pipeline(fs.createReadStream("input.txt"), zlib.createGzip(), fs.createWriteStream("input.txt.gz"));
 ```
 
-## 7. Load Balancing
-
-### Nginx Configuration
+## 8. Load Balancing với Nginx
 
 ```nginx
 upstream nodejs {
@@ -344,29 +392,29 @@ server {
 }
 ```
 
-## 8. Monitoring & Profiling
-
-```javascript
-// Built-in profiler
-node --prof app.js
-node --prof-process isolate-*.log > processed.txt
-
-// Clinic.js
-npm install clinic -g
-clinic doctor -- node app.js
-clinic flame -- node app.js
-clinic bubbleprof -- node app.js
-```
-
 ## 9. Performance Checklist
 
-- [ ] Use clustering/PM2 for multi-core
-- [ ] Implement caching (Redis)
-- [ ] Optimize database queries
-- [ ] Use connection pooling
+- [ ] Clustering/PM2 cho multi-core
+- [ ] Caching (Redis)
+- [ ] Database indexing
+- [ ] Connection pooling
+- [ ] Gzip compression
+- [ ] CDN cho static assets
+- [ ] Avoid N+1 queries
 - [ ] Stream large files
-- [ ] Compress responses (gzip)
-- [ ] Use CDN for static assets
 - [ ] Monitor memory usage
-- [ ] Set up health checks
-- [ ] Use async operations
+- [ ] Load balancing
+
+## 10. Tổng kết
+
+**Clustering:** Tận dụng multi-core CPU với PM2.
+
+**Worker Threads:** CPU-intensive tasks không block Event Loop.
+
+**Caching:** Redis để giảm database load.
+
+**Database:** Indexing, connection pooling, avoid N+1.
+
+**Memory:** Monitor và tránh memory leaks.
+
+**Streams:** Xử lý large files hiệu quả.

@@ -1,14 +1,64 @@
 # ORM/ODM trong Node.js
 
-## 1. Prisma
+## 1. Khái niệm
+
+### ORM là gì?
+
+**ORM (Object-Relational Mapping)** là kỹ thuật cho phép tương tác với database bằng objects thay vì viết SQL trực tiếp.
+
+**Không có ORM:**
+
+```javascript
+// Viết SQL trực tiếp
+const result = await db.query("SELECT * FROM users WHERE email = $1", ["john@example.com"]);
+```
+
+**Với ORM:**
+
+```javascript
+// Dùng objects và methods
+const user = await User.findOne({ where: { email: "john@example.com" } });
+```
+
+### ODM là gì?
+
+**ODM (Object-Document Mapping)** tương tự ORM nhưng cho NoSQL databases (MongoDB).
+
+### Tại sao cần ORM/ODM?
+
+| Lợi ích          | Giải thích                           |
+| ---------------- | ------------------------------------ |
+| **Abstraction**  | Không cần viết SQL/queries trực tiếp |
+| **Type Safety**  | TypeScript support, auto-complete    |
+| **Migrations**   | Quản lý schema changes               |
+| **Relations**    | Dễ dàng define và query relations    |
+| **Security**     | Tự động escape, tránh SQL injection  |
+| **Productivity** | Viết code nhanh hơn                  |
+
+### Các ORM/ODM phổ biến
+
+| Tool          | Database      | Đặc điểm              |
+| ------------- | ------------- | --------------------- |
+| **Prisma**    | SQL + MongoDB | Modern, type-safe     |
+| **TypeORM**   | SQL           | Decorator-based       |
+| **Sequelize** | SQL           | Mature, feature-rich  |
+| **Mongoose**  | MongoDB       | ODM phổ biến nhất     |
+| **Drizzle**   | SQL           | Lightweight, SQL-like |
+| **Knex.js**   | SQL           | Query builder         |
+
+## 2. Prisma
+
+### Khái niệm
+
+**Prisma** là ORM modern với type-safety tuyệt đối, auto-generate TypeScript types từ schema.
 
 ### Đặc điểm
 
-- Type-safe, modern ORM
-- Auto-generate TypeScript types
-- Schema-first approach
-- Prisma Studio (GUI)
-- Hỗ trợ: PostgreSQL, MySQL, SQLite, SQL Server, MongoDB
+- **Type-safe:** Auto-generate types
+- **Schema-first:** Define schema trong file `.prisma`
+- **Prisma Studio:** GUI để xem data
+- **Migrations:** Built-in migration system
+- **Hỗ trợ:** PostgreSQL, MySQL, SQLite, SQL Server, MongoDB
 
 ### Cài đặt
 
@@ -21,6 +71,7 @@ npx prisma init
 
 ```prisma
 // prisma/schema.prisma
+
 generator client {
   provider = "prisma-client-js"
 }
@@ -30,12 +81,15 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// Models
 model User {
   id        Int      @id @default(autoincrement())
   email     String   @unique
   name      String?
-  posts     Post[]
-  profile   Profile?
+  password  String
+  role      Role     @default(USER)
+  posts     Post[]   // Relation 1-n
+  profile   Profile? // Relation 1-1
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
@@ -47,6 +101,8 @@ model Post {
   published Boolean  @default(false)
   author    User     @relation(fields: [authorId], references: [id])
   authorId  Int
+  tags      Tag[]    // Relation n-n
+  createdAt DateTime @default(now())
 }
 
 model Profile {
@@ -55,90 +111,316 @@ model Profile {
   user   User   @relation(fields: [userId], references: [id])
   userId Int    @unique
 }
+
+model Tag {
+  id    Int    @id @default(autoincrement())
+  name  String @unique
+  posts Post[]
+}
+
+enum Role {
+  USER
+  ADMIN
+}
 ```
 
 ### CRUD Operations
 
 ```typescript
-import { PrismaClient } from "@prisma/client";
+import { PrismaClient } from '@prisma/client';
+
 const prisma = new PrismaClient();
 
-// Create
+// CREATE
 const user = await prisma.user.create({
   data: {
-    email: "alice@example.com",
-    name: "Alice",
+    email: 'alice@example.com',
+    name: 'Alice',
+    password: 'hashed_password',
+    // Tạo relation cùng lúc
     posts: {
-      create: { title: "Hello World" },
+      create: [
+        { title: 'Hello World' },
+        { title: 'My Second Post' }
+      ]
     },
+    profile: {
+      create: { bio: 'I am Alice' }
+    }
+  },
+  // Include relations trong response
+  include: {
+    posts: true,
+    profile: true
+  }
+});
+
+// READ - Find many
+const users = await prisma.user.findMany({
+  where: {
+    email: { contains: '@example.com' },
+    role: 'USER'
   },
   include: { posts: true },
+  orderBy: { createdAt: 'desc' },
+  take: 10,  // Limit
+  skip: 0    // Offset
 });
 
-// Read
-const users = await prisma.user.findMany({
-  where: { email: { contains: "@example.com" } },
-  include: { posts: true },
-  orderBy: { createdAt: "desc" },
-  take: 10,
-  skip: 0,
-});
-
+// READ - Find one
 const user = await prisma.user.findUnique({
-  where: { id: 1 },
+  where: { id: 1 }
 });
 
-// Update
+const user = await prisma.user.findFirst({
+  where: { email: { contains: 'alice' } }
+});
+
+// UPDATE
 const updated = await prisma.user.update({
   where: { id: 1 },
-  data: { name: "Alice Updated" },
+  data: { name: 'Alice Updated' }
 });
 
-// Delete
+// UPDATE many
+await prisma.user.updateMany({
+  where: { role: 'USER' },
+  data: { role: 'ADMIN' }
+});
+
+// DELETE
 await prisma.user.delete({
-  where: { id: 1 },
+  where: { id: 1 }
 });
 
-// Transaction
+// DELETE many
+await prisma.user.deleteMany({
+  where: { email: { contains: '@test.com' } }
+});
+
+// TRANSACTION
 const [user, post] = await prisma.$transaction([
-  prisma.user.create({ data: { email: "bob@example.com" } }),
-  prisma.post.create({ data: { title: "Post", authorId: 1 } }),
+  prisma.user.create({ data: { email: 'bob@example.com', password: '123' } }),
+  prisma.post.create({ data: { title: 'Post', authorId: 1 } })
 ]);
+
+// Interactive transaction
+await prisma.$transaction(async (tx) => {
+  const user = await tx.user.create({ data: {...} });
+  await tx.post.create({ data: { authorId: user.id, ... } });
+});
 ```
 
-### Migration
+### Migrations
 
 ```bash
+# Tạo migration từ schema changes
 npx prisma migrate dev --name init
-npx prisma migrate deploy  # production
-npx prisma db push         # sync without migration
-npx prisma studio          # GUI
+
+# Apply migrations (production)
+npx prisma migrate deploy
+
+# Sync schema không tạo migration (dev)
+npx prisma db push
+
+# Mở Prisma Studio
+npx prisma studio
 ```
 
----
+## 3. Mongoose (MongoDB ODM)
 
-## 2. TypeORM
+### Khái niệm
+
+**Mongoose** là ODM phổ biến nhất cho MongoDB, cung cấp schema validation, middleware, và nhiều features.
 
 ### Đặc điểm
 
-- Decorator-based (giống Hibernate/JPA)
-- Active Record & Data Mapper patterns
-- Hỗ trợ nhiều databases
-- Migration system
+- **Schema validation:** Define structure cho documents
+- **Middleware (hooks):** Pre/post hooks
+- **Population:** Giống JOIN trong SQL
+- **Plugins:** Extensible
 
 ### Cài đặt
 
 ```bash
-npm install typeorm reflect-metadata
-npm install pg  # hoặc mysql2, sqlite3...
+npm install mongoose
 ```
 
-### Entity Definition
+### Schema & Model
+
+```javascript
+const mongoose = require("mongoose");
+
+// Connect
+mongoose.connect("mongodb://localhost:27017/mydb");
+
+// Schema definition
+const userSchema = new mongoose.Schema(
+  {
+    email: {
+      type: String,
+      required: [true, "Email là bắt buộc"],
+      unique: true,
+      lowercase: true,
+      trim: true,
+      match: [/^\S+@\S+\.\S+$/, "Email không hợp lệ"],
+    },
+    name: {
+      type: String,
+      required: true,
+      minlength: 2,
+      maxlength: 100,
+    },
+    password: {
+      type: String,
+      required: true,
+      minlength: 6,
+      select: false, // Không trả về khi query
+    },
+    role: {
+      type: String,
+      enum: ["user", "admin"],
+      default: "user",
+    },
+    age: {
+      type: Number,
+      min: 0,
+      max: 120,
+    },
+    posts: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Post", // Reference đến Post model
+      },
+    ],
+  },
+  {
+    timestamps: true, // createdAt, updatedAt tự động
+  }
+);
+
+// Instance methods
+userSchema.methods.isAdmin = function () {
+  return this.role === "admin";
+};
+
+userSchema.methods.comparePassword = async function (candidatePassword) {
+  return bcrypt.compare(candidatePassword, this.password);
+};
+
+// Static methods
+userSchema.statics.findByEmail = function (email) {
+  return this.findOne({ email: email.toLowerCase() });
+};
+
+// Middleware (hooks)
+userSchema.pre("save", async function (next) {
+  // Hash password trước khi save
+  if (this.isModified("password")) {
+    this.password = await bcrypt.hash(this.password, 10);
+  }
+  next();
+});
+
+userSchema.post("save", function (doc) {
+  console.log("User saved:", doc._id);
+});
+
+// Virtual (computed field)
+userSchema.virtual("fullName").get(function () {
+  return `${this.firstName} ${this.lastName}`;
+});
+
+// Create model
+const User = mongoose.model("User", userSchema);
+
+module.exports = User;
+```
+
+### CRUD Operations
+
+```javascript
+// CREATE
+const user = new User({
+  email: "alice@example.com",
+  name: "Alice",
+  password: "123456",
+});
+await user.save();
+
+// Hoặc
+const user = await User.create({
+  email: "alice@example.com",
+  name: "Alice",
+  password: "123456",
+});
+
+// READ
+const users = await User.find({ role: "user" })
+  .select("name email") // Chọn fields
+  .populate("posts") // Join với posts
+  .sort({ createdAt: -1 }) // Sắp xếp
+  .limit(10) // Giới hạn
+  .skip(0); // Offset
+
+const user = await User.findById(id);
+const user = await User.findOne({ email: "alice@example.com" });
+
+// UPDATE
+await User.findByIdAndUpdate(
+  id,
+  { name: "Alice Updated" },
+  { new: true, runValidators: true } // Trả về doc mới, chạy validation
+);
+
+await User.updateOne({ _id: id }, { $set: { name: "Alice Updated" } });
+
+await User.updateMany({ role: "user" }, { $set: { role: "admin" } });
+
+// DELETE
+await User.findByIdAndDelete(id);
+await User.deleteOne({ _id: id });
+await User.deleteMany({ role: "user" });
+
+// AGGREGATION
+const stats = await User.aggregate([
+  { $match: { role: "user" } },
+  {
+    $group: {
+      _id: "$country",
+      count: { $sum: 1 },
+      avgAge: { $avg: "$age" },
+    },
+  },
+  { $sort: { count: -1 } },
+]);
+
+// TRANSACTION
+const session = await mongoose.startSession();
+session.startTransaction();
+
+try {
+  await User.create([{ email: "bob@example.com" }], { session });
+  await Post.create([{ title: "Post", author: userId }], { session });
+  await session.commitTransaction();
+} catch (error) {
+  await session.abortTransaction();
+  throw error;
+} finally {
+  session.endSession();
+}
+```
+
+## 4. TypeORM
+
+### Khái niệm
+
+**TypeORM** là ORM decorator-based, giống Hibernate (Java) hoặc Entity Framework (.NET).
+
+### Ví dụ
 
 ```typescript
-// entities/User.ts
-import { Entity, PrimaryGeneratedColumn, Column, OneToMany, CreateDateColumn, UpdateDateColumn } from "typeorm";
-import { Post } from "./Post";
+import { Entity, PrimaryGeneratedColumn, Column, OneToMany, ManyToOne } from "typeorm";
 
 @Entity()
 export class User {
@@ -156,14 +438,7 @@ export class User {
 
   @CreateDateColumn()
   createdAt: Date;
-
-  @UpdateDateColumn()
-  updatedAt: Date;
 }
-
-// entities/Post.ts
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne } from "typeorm";
-import { User } from "./User";
 
 @Entity()
 export class Post {
@@ -173,30 +448,15 @@ export class Post {
   @Column()
   title: string;
 
-  @Column({ nullable: true })
-  content: string;
-
-  @Column({ default: false })
-  published: boolean;
-
   @ManyToOne(() => User, (user) => user.posts)
   author: User;
 }
-```
 
-### CRUD Operations
-
-```typescript
-import { AppDataSource } from "./data-source";
-import { User } from "./entities/User";
-
+// Usage
 const userRepository = AppDataSource.getRepository(User);
 
 // Create
-const user = userRepository.create({
-  email: "alice@example.com",
-  name: "Alice",
-});
+const user = userRepository.create({ email: "alice@example.com" });
 await userRepository.save(user);
 
 // Read
@@ -204,416 +464,49 @@ const users = await userRepository.find({
   where: { email: Like("%@example.com") },
   relations: ["posts"],
   order: { createdAt: "DESC" },
-  take: 10,
-  skip: 0,
 });
-
-const user = await userRepository.findOne({
-  where: { id: 1 },
-});
-
-// Update
-await userRepository.update(1, { name: "Alice Updated" });
-
-// Delete
-await userRepository.delete(1);
 
 // Query Builder
 const users = await userRepository
   .createQueryBuilder("user")
   .leftJoinAndSelect("user.posts", "post")
   .where("user.email LIKE :email", { email: "%@example.com" })
-  .orderBy("user.createdAt", "DESC")
   .getMany();
-
-// Transaction
-await AppDataSource.transaction(async (manager) => {
-  await manager.save(user);
-  await manager.save(post);
-});
 ```
 
----
+## 5. So sánh
 
-## 3. Sequelize
+| Feature        | Prisma      | Mongoose | TypeORM  |
+| -------------- | ----------- | -------- | -------- |
+| Type Safety    | ⭐⭐⭐⭐⭐  | ⭐⭐⭐   | ⭐⭐⭐⭐ |
+| Learning Curve | Easy        | Easy     | Medium   |
+| Performance    | ⭐⭐⭐⭐    | ⭐⭐⭐⭐ | ⭐⭐⭐   |
+| Migrations     | ⭐⭐⭐⭐⭐  | N/A      | ⭐⭐⭐⭐ |
+| Database       | SQL + Mongo | MongoDB  | SQL      |
+| Flexibility    | Medium      | High     | High     |
 
-### Đặc điểm
+## 6. Khi nào dùng ORM nào?
 
-- Mature, feature-rich
-- Promise-based
-- Hỗ trợ: PostgreSQL, MySQL, MariaDB, SQLite, SQL Server
+| ORM           | Dùng khi                                     |
+| ------------- | -------------------------------------------- |
+| **Prisma**    | TypeScript projects, cần type-safety, modern |
+| **Mongoose**  | MongoDB projects                             |
+| **TypeORM**   | Quen với Java/C# patterns, cần flexibility   |
+| **Sequelize** | Legacy projects, cần mature solution         |
+| **Drizzle**   | Cần lightweight, SQL-like syntax             |
 
-### Cài đặt
+## 7. Tổng kết
 
-```bash
-npm install sequelize
-npm install pg pg-hstore  # PostgreSQL
-```
+**ORM/ODM là gì?** Abstraction layer để tương tác với database bằng objects.
 
-### Model Definition
+**Prisma:** Modern, type-safe, schema-first, auto-generate types.
 
-```javascript
-const { Sequelize, DataTypes, Model } = require("sequelize");
-const sequelize = new Sequelize("database", "username", "password", {
-  host: "localhost",
-  dialect: "postgres",
-});
+**Mongoose:** ODM cho MongoDB, schema validation, middleware.
 
-class User extends Model {}
-User.init(
-  {
-    email: {
-      type: DataTypes.STRING,
-      allowNull: false,
-      unique: true,
-    },
-    name: {
-      type: DataTypes.STRING,
-    },
-  },
-  {
-    sequelize,
-    modelName: "User",
-    timestamps: true,
-  }
-);
+**TypeORM:** Decorator-based, giống Hibernate.
 
-class Post extends Model {}
-Post.init(
-  {
-    title: {
-      type: DataTypes.STRING,
-      allowNull: false,
-    },
-    content: DataTypes.TEXT,
-    published: {
-      type: DataTypes.BOOLEAN,
-      defaultValue: false,
-    },
-  },
-  {
-    sequelize,
-    modelName: "Post",
-  }
-);
+**Chọn:**
 
-// Relations
-User.hasMany(Post, { foreignKey: "authorId" });
-Post.belongsTo(User, { foreignKey: "authorId" });
-```
-
-### CRUD Operations
-
-```javascript
-// Create
-const user = await User.create({
-  email: "alice@example.com",
-  name: "Alice",
-});
-
-// Read
-const users = await User.findAll({
-  where: {
-    email: { [Op.like]: "%@example.com" },
-  },
-  include: [Post],
-  order: [["createdAt", "DESC"]],
-  limit: 10,
-  offset: 0,
-});
-
-const user = await User.findByPk(1);
-
-// Update
-await User.update({ name: "Alice Updated" }, { where: { id: 1 } });
-
-// Delete
-await User.destroy({ where: { id: 1 } });
-
-// Transaction
-const t = await sequelize.transaction();
-try {
-  await User.create({ email: "bob@example.com" }, { transaction: t });
-  await Post.create({ title: "Post", authorId: 1 }, { transaction: t });
-  await t.commit();
-} catch (error) {
-  await t.rollback();
-}
-```
-
----
-
-## 4. Mongoose (MongoDB ODM)
-
-### Đặc điểm
-
-- ODM cho MongoDB
-- Schema validation
-- Middleware (hooks)
-- Population (like JOIN)
-
-### Cài đặt
-
-```bash
-npm install mongoose
-```
-
-### Schema & Model
-
-```javascript
-const mongoose = require("mongoose");
-
-// Connect
-mongoose.connect("mongodb://localhost:27017/mydb");
-
-// Schema
-const userSchema = new mongoose.Schema(
-  {
-    email: {
-      type: String,
-      required: true,
-      unique: true,
-      lowercase: true,
-    },
-    name: String,
-    age: {
-      type: Number,
-      min: 0,
-      max: 120,
-    },
-    posts: [
-      {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "Post",
-      },
-    ],
-  },
-  {
-    timestamps: true,
-  }
-);
-
-// Methods
-userSchema.methods.getFullName = function () {
-  return this.name;
-};
-
-// Statics
-userSchema.statics.findByEmail = function (email) {
-  return this.findOne({ email });
-};
-
-// Middleware
-userSchema.pre("save", function (next) {
-  console.log("Before save");
-  next();
-});
-
-const User = mongoose.model("User", userSchema);
-
-// Post Schema
-const postSchema = new mongoose.Schema(
-  {
-    title: { type: String, required: true },
-    content: String,
-    published: { type: Boolean, default: false },
-    author: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "User",
-      required: true,
-    },
-  },
-  { timestamps: true }
-);
-
-const Post = mongoose.model("Post", postSchema);
-```
-
-### CRUD Operations
-
-```javascript
-// Create
-const user = new User({ email: "alice@example.com", name: "Alice" });
-await user.save();
-// hoặc
-const user = await User.create({ email: "alice@example.com" });
-
-// Read
-const users = await User.find({ email: /@example.com/ })
-  .populate("posts")
-  .sort({ createdAt: -1 })
-  .limit(10)
-  .skip(0);
-
-const user = await User.findById(id);
-const user = await User.findOne({ email: "alice@example.com" });
-
-// Update
-await User.findByIdAndUpdate(id, { name: "Alice Updated" }, { new: true });
-await User.updateOne({ _id: id }, { name: "Alice Updated" });
-
-// Delete
-await User.findByIdAndDelete(id);
-await User.deleteOne({ _id: id });
-
-// Aggregation
-const stats = await User.aggregate([
-  { $match: { age: { $gte: 18 } } },
-  { $group: { _id: "$country", count: { $sum: 1 } } },
-  { $sort: { count: -1 } },
-]);
-
-// Transaction
-const session = await mongoose.startSession();
-session.startTransaction();
-try {
-  await User.create([{ email: "bob@example.com" }], { session });
-  await Post.create([{ title: "Post", author: userId }], { session });
-  await session.commitTransaction();
-} catch (error) {
-  await session.abortTransaction();
-} finally {
-  session.endSession();
-}
-```
-
----
-
-## 5. Drizzle ORM
-
-### Đặc điểm
-
-- Lightweight, TypeScript-first
-- SQL-like syntax
-- Zero dependencies
-- Serverless-ready
-
-### Cài đặt
-
-```bash
-npm install drizzle-orm
-npm install drizzle-kit -D
-npm install pg  # hoặc mysql2, better-sqlite3
-```
-
-### Schema Definition
-
-```typescript
-// schema.ts
-import { pgTable, serial, text, boolean, timestamp, integer } from "drizzle-orm/pg-core";
-
-export const users = pgTable("users", {
-  id: serial("id").primaryKey(),
-  email: text("email").notNull().unique(),
-  name: text("name"),
-  createdAt: timestamp("created_at").defaultNow(),
-});
-
-export const posts = pgTable("posts", {
-  id: serial("id").primaryKey(),
-  title: text("title").notNull(),
-  content: text("content"),
-  published: boolean("published").default(false),
-  authorId: integer("author_id").references(() => users.id),
-});
-```
-
-### CRUD Operations
-
-```typescript
-import { drizzle } from "drizzle-orm/node-postgres";
-import { eq, like, desc } from "drizzle-orm";
-import { users, posts } from "./schema";
-
-const db = drizzle(pool);
-
-// Create
-const [user] = await db.insert(users).values({ email: "alice@example.com", name: "Alice" }).returning();
-
-// Read
-const allUsers = await db
-  .select()
-  .from(users)
-  .where(like(users.email, "%@example.com"))
-  .orderBy(desc(users.createdAt))
-  .limit(10);
-
-// Join
-const usersWithPosts = await db.select().from(users).leftJoin(posts, eq(users.id, posts.authorId));
-
-// Update
-await db.update(users).set({ name: "Alice Updated" }).where(eq(users.id, 1));
-
-// Delete
-await db.delete(users).where(eq(users.id, 1));
-
-// Transaction
-await db.transaction(async (tx) => {
-  await tx.insert(users).values({ email: "bob@example.com" });
-  await tx.insert(posts).values({ title: "Post", authorId: 1 });
-});
-```
-
----
-
-## 6. Knex.js (Query Builder)
-
-### Đặc điểm
-
-- Query builder (không phải full ORM)
-- Flexible, SQL-like
-- Migration & seeding
-- Dùng làm base cho nhiều ORMs
-
-```javascript
-const knex = require("knex")({
-  client: "pg",
-  connection: process.env.DATABASE_URL,
-});
-
-// Select
-const users = await knex("users")
-  .select("*")
-  .where("email", "like", "%@example.com")
-  .orderBy("created_at", "desc")
-  .limit(10);
-
-// Insert
-const [id] = await knex("users").insert({ email: "alice@example.com", name: "Alice" }).returning("id");
-
-// Update
-await knex("users").where({ id: 1 }).update({ name: "Alice Updated" });
-
-// Delete
-await knex("users").where({ id: 1 }).del();
-
-// Join
-const usersWithPosts = await knex("users")
-  .leftJoin("posts", "users.id", "posts.author_id")
-  .select("users.*", "posts.title");
-
-// Raw query
-const result = await knex.raw("SELECT * FROM users WHERE id = ?", [1]);
-```
-
----
-
-## 7. So sánh tổng quan
-
-| Feature        | Prisma      | TypeORM  | Sequelize | Mongoose | Drizzle    |
-| -------------- | ----------- | -------- | --------- | -------- | ---------- |
-| Type Safety    | ⭐⭐⭐⭐⭐  | ⭐⭐⭐⭐ | ⭐⭐      | ⭐⭐⭐   | ⭐⭐⭐⭐⭐ |
-| Learning Curve | Easy        | Medium   | Medium    | Easy     | Easy       |
-| Performance    | ⭐⭐⭐⭐    | ⭐⭐⭐   | ⭐⭐⭐    | ⭐⭐⭐⭐ | ⭐⭐⭐⭐⭐ |
-| Flexibility    | Medium      | High     | High      | High     | High       |
-| Migration      | ⭐⭐⭐⭐⭐  | ⭐⭐⭐⭐ | ⭐⭐⭐⭐  | N/A      | ⭐⭐⭐⭐   |
-| Database       | SQL + Mongo | SQL      | SQL       | MongoDB  | SQL        |
-
-## 8. Khi nào dùng ORM nào?
-
-- **Prisma**: TypeScript projects, cần type-safety, developer experience tốt
-- **TypeORM**: Quen với Java/C# patterns, cần flexibility
-- **Sequelize**: Legacy projects, cần mature solution
-- **Mongoose**: MongoDB projects
-- **Drizzle**: Cần lightweight, serverless, SQL-like syntax
-- **Knex**: Cần query builder thuần, không cần full ORM
+- TypeScript + SQL → Prisma
+- MongoDB → Mongoose
+- Quen Java/C# → TypeORM

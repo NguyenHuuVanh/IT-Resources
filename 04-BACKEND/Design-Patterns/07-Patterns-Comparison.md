@@ -2,112 +2,117 @@
 
 ## 1. Bảng so sánh tổng quan
 
-| Pattern            | Độ phức tạp | Testability | Scalability | Use Case        |
-| ------------------ | ----------- | ----------- | ----------- | --------------- |
-| MVC                | Thấp        | Trung bình  | Trung bình  | Web apps, APIs  |
-| MVVM               | Trung bình  | Cao         | Cao         | Frontend SPAs   |
-| MVP                | Trung bình  | Cao         | Trung bình  | Mobile, Desktop |
-| Clean Architecture | Cao         | Rất cao     | Rất cao     | Enterprise      |
-| Repository         | Thấp        | Cao         | Cao         | Data access     |
-| Service Layer      | Thấp-TB     | Cao         | Cao         | Business logic  |
+| Pattern                | Mục đích             | Độ phức tạp | Testability | Use Case        |
+| ---------------------- | -------------------- | ----------- | ----------- | --------------- |
+| **MVC**                | Tách UI, Logic, Data | Thấp        | Trung bình  | Web apps, APIs  |
+| **MVVM**               | Two-way binding      | Trung bình  | Cao         | Frontend SPAs   |
+| **MVP**                | View passive         | Trung bình  | Cao         | Mobile, Desktop |
+| **Clean Architecture** | Layers độc lập       | Cao         | Rất cao     | Enterprise      |
+| **Repository**         | Abstract data access | Thấp        | Cao         | Data layer      |
+| **Service Layer**      | Tách business logic  | Thấp-TB     | Cao         | Business layer  |
 
-## 2. Khi nào dùng pattern nào?
+## 2. So sánh chi tiết
 
-### MVC
-
-```
-✅ Dùng khi:
-- Small to medium projects
-- CRUD applications
-- Team mới với patterns
-- Prototypes, MVPs
-- Server-rendered apps
-
-❌ Không dùng khi:
-- Business logic phức tạp
-- Cần high testability
-- Enterprise applications
-```
-
-### MVVM
+### MVC vs MVVM vs MVP
 
 ```
-✅ Dùng khi:
-- Single Page Applications
-- Vue.js, Angular, React apps
-- Complex UI state
-- Real-time updates
-- Forms với validation
+┌─────────────────────────────────────────────────────────────────┐
+│                           MVC                                   │
+│  User → Controller → Model → View → User                        │
+│  - Controller xử lý request                                     │
+│  - View có thể có logic                                         │
+│  - One-way data flow                                            │
+└─────────────────────────────────────────────────────────────────┘
 
-❌ Không dùng khi:
-- Server-side rendering
-- Static websites
-- Simple apps
+┌─────────────────────────────────────────────────────────────────┐
+│                          MVVM                                   │
+│  User ↔ View ↔ ViewModel ↔ Model                                │
+│  - Two-way data binding                                         │
+│  - View passive (chỉ bind)                                      │
+│  - ViewModel quản lý state                                      │
+└─────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────┐
+│                           MVP                                   │
+│  User → View → Presenter → Model                                │
+│         ↑         │                                             │
+│         └─────────┘ (update via interface)                      │
+│  - View hoàn toàn passive                                       │
+│  - Presenter điều khiển View qua interface                      │
+│  - Manual updates                                               │
+└─────────────────────────────────────────────────────────────────┘
 ```
 
-### MVP
+| Khía cạnh        | MVC             | MVVM                | MVP                   |
+| ---------------- | --------------- | ------------------- | --------------------- |
+| **View**         | Active          | Passive + Binding   | Passive               |
+| **Mediator**     | Controller      | ViewModel           | Presenter             |
+| **Data binding** | Manual          | Automatic           | Manual                |
+| **View-Model**   | View biết Model | View bind ViewModel | View không biết Model |
+| **Testing**      | Test Controller | Test ViewModel      | Test Presenter        |
+| **Platform**     | Server-side     | Frontend            | Mobile/Desktop        |
+
+### Khi nào dùng pattern nào?
 
 ```
-✅ Dùng khi:
-- Android native development
-- Desktop applications
-- Cần unit test UI logic
-- Complex presentation logic
-
-❌ Không dùng khi:
-- Web applications
-- Simple CRUD
-- SPAs với data binding
+Bạn đang làm gì?
+│
+├─ Server-side web app / REST API?
+│   └─► MVC
+│
+├─ Frontend SPA (Vue, React, Angular)?
+│   └─► MVVM
+│
+├─ Mobile native (Android, iOS)?
+│   └─► MVP
+│
+├─ Enterprise app phức tạp?
+│   └─► Clean Architecture
+│
+├─ Cần switch database?
+│   └─► Repository Pattern
+│
+└─ Controller quá dài?
+    └─► Service Layer
 ```
 
-### Clean Architecture
+## 3. Kết hợp các Patterns
+
+### Level 1: MVC đơn giản
 
 ```
-✅ Dùng khi:
-- Enterprise applications
-- Long-term projects (3+ years)
-- Team lớn (5+ developers)
-- Business logic phức tạp
-- Cần thay đổi database/framework
-
-❌ Không dùng khi:
-- MVPs, prototypes
-- Small projects
-- Tight deadlines
-- Solo developer
+Controller → Model → View
 ```
 
-### Repository Pattern
+**Dùng khi:** Small projects, CRUD đơn giản
+
+### Level 2: MVC + Service Layer
 
 ```
-✅ Dùng khi:
-- Có thể thay đổi database
-- Cần unit test business logic
-- Multiple data sources
-- Complex queries
-
-❌ Không dùng khi:
-- Simple CRUD với 1 database
-- Prototype nhanh
+Controller → Service → Model → View
 ```
 
-### Service Layer
+**Dùng khi:** Business logic phức tạp, controller phình to
+
+### Level 3: MVC + Service + Repository
 
 ```
-✅ Dùng khi:
-- Controller đang phình to
-- Business logic cần reuse
-- Multiple entry points (API, CLI, Queue)
-- Cần transaction management
-
-❌ Không dùng khi:
-- Simple CRUD operations
-- Logic chỉ dùng 1 nơi
+Controller → Service → Repository → Database
 ```
 
-## 3. Kết hợp các patterns
+**Dùng khi:** Cần abstract database, unit test
 
-### Small Project: MVC
+### Level 4: Clean Architecture
+
+```
+Presentation → Application → Domain ← Infrastructure
+```
+
+**Dùng khi:** Enterprise, long-term projects
+
+## 4. Cấu trúc thư mục theo Level
+
+### Level 1: MVC
 
 ```
 src/
@@ -117,104 +122,74 @@ src/
 └── routes/
 ```
 
-### Medium Project: MVC + Service + Repository
+### Level 2: MVC + Service
 
 ```
 src/
-├── controllers/     # HTTP handling
-├── services/        # Business logic
-├── repositories/    # Data access
-├── models/          # Database models
+├── controllers/
+├── services/
+├── models/
+├── views/
 └── routes/
 ```
 
-### Large Project: Clean Architecture
+### Level 3: MVC + Service + Repository
 
 ```
 src/
-├── presentation/    # Controllers, Routes
-├── application/     # Use Cases, Services
-├── domain/          # Entities, Interfaces
-└── infrastructure/  # Database, External
+├── controllers/
+├── services/
+├── repositories/
+├── models/
+└── routes/
 ```
 
-## 4. Migration Path
+### Level 4: Clean Architecture
 
 ```
-Simple MVC
+src/
+├── presentation/
+│   ├── controllers/
+│   └── routes/
+├── application/
+│   ├── use-cases/
+│   └── dtos/
+├── domain/
+│   ├── entities/
+│   └── repositories/
+└── infrastructure/
+    ├── database/
+    └── services/
+```
+
+## 5. Decision Matrix
+
+| Yếu tố        | MVC        | +Service    | +Repository  | Clean       |
+| ------------- | ---------- | ----------- | ------------ | ----------- |
+| Project size  | Small      | Medium      | Medium-Large | Large       |
+| Team size     | 1-3        | 3-5         | 5-10         | 10+         |
+| Duration      | < 6 months | 6-12 months | 1-2 years    | 2+ years    |
+| Complexity    | Low        | Medium      | Medium-High  | High        |
+| Test coverage | < 50%      | 50-70%      | 70-85%       | 85%+        |
+| Change DB     | Unlikely   | Possible    | Likely       | Very likely |
+
+## 6. Migration Path
+
+```
+MVC đơn giản
     │
-    ▼ (Controller phình to)
+    │ Controller > 100 lines?
+    ▼
 MVC + Service Layer
     │
-    ▼ (Cần switch database)
+    │ Cần mock database?
+    ▼
 MVC + Service + Repository
     │
-    ▼ (Business logic phức tạp)
+    │ Business logic phức tạp?
+    │ Team > 5 người?
+    ▼
 Clean Architecture
-```
-
-## 5. Decision Tree
-
-```
-Start
-  │
-  ├─ Frontend SPA? ──────────────────► MVVM
-  │
-  ├─ Mobile/Desktop native? ─────────► MVP
-  │
-  ├─ Small project (<6 months)? ─────► MVC
-  │
-  ├─ Medium project?
-  │   ├─ Complex business logic? ────► MVC + Service
-  │   └─ Multiple databases? ────────► MVC + Service + Repository
-  │
-  └─ Enterprise/Long-term?
-      └─ Team > 5 people? ───────────► Clean Architecture
-```
-
-## 6. Code Organization Tips
-
-### Naming Conventions
-
-```
-Controllers: UserController, OrderController
-Services: UserService, OrderService, PaymentService
-Repositories: UserRepository, OrderRepository
-Use Cases: CreateUserUseCase, GetOrderByIdUseCase
-DTOs: CreateUserDTO, UserResponseDTO
-Entities: User, Order, Product
-```
-
-### File Structure
-
-```javascript
-// Controller - chỉ handle HTTP
-class UserController {
-  async create(req, res) {} // POST /users
-  async getAll(req, res) {} // GET /users
-  async getById(req, res) {} // GET /users/:id
-  async update(req, res) {} // PUT /users/:id
-  async delete(req, res) {} // DELETE /users/:id
-}
-
-// Service - business logic
-class UserService {
-  async createUser(data) {}
-  async getAllUsers(filters) {}
-  async getUserById(id) {}
-  async updateUser(id, data) {}
-  async deleteUser(id) {}
-}
-
-// Repository - data access
-class UserRepository {
-  async findAll() {}
-  async findById(id) {}
-  async findByEmail(email) {}
-  async create(data) {}
-  async update(id, data) {}
-  async delete(id) {}
-}
 ```
 
 ## 7. Common Mistakes
@@ -223,54 +198,148 @@ class UserRepository {
 
 ```javascript
 // Không cần Clean Architecture cho TODO app
-// Dùng MVC đơn giản là đủ
+// MVC đơn giản là đủ
 ```
 
 ### ❌ Under-engineering
 
 ```javascript
-// Fat Controller với 500+ lines
+// Controller 500+ lines
 // Nên tách ra Service Layer
 ```
 
-### ❌ Mixing Concerns
+### ❌ Mixing concerns
 
 ```javascript
-// Service gọi trực tiếp req, res
-// Service không nên biết về HTTP
+// ❌ Service biết về HTTP
+class UserService {
+  async createUser(req, res) {
+    // Sai!
+    // ...
+  }
+}
+
+// ✅ Service chỉ biết business logic
+class UserService {
+  async createUser(userData) {
+    // ...
+  }
+}
 ```
 
 ### ❌ Anemic Domain Model
 
 ```javascript
-// Entity chỉ có getters/setters
-// Nên có business methods
+// ❌ Entity chỉ có data, không có behavior
+class User {
+  id;
+  email;
+  name;
+}
+
+// ✅ Entity có business methods
+class User {
+  id;
+  email;
+  name;
+
+  updateEmail(newEmail) {
+    this.validateEmail(newEmail);
+    this.email = newEmail;
+  }
+
+  isAdmin() {
+    return this.role === "admin";
+  }
+}
 ```
 
 ## 8. Best Practices
 
-1. **Start simple, refactor later**
+### 1. Start Simple, Refactor Later
 
-   - Bắt đầu với MVC
-   - Refactor khi cần
+```
+Bắt đầu với MVC
+→ Khi cần, thêm Service Layer
+→ Khi cần, thêm Repository
+→ Không cần Clean Architecture từ đầu
+```
 
-2. **Single Responsibility**
+### 2. Single Responsibility
 
-   - Mỗi class làm 1 việc
-   - Controller: HTTP
-   - Service: Business
-   - Repository: Data
+```
+Controller: HTTP handling
+Service: Business logic
+Repository: Data access
+Entity: Business rules
+```
 
-3. **Dependency Injection**
+### 3. Dependency Injection
 
-   - Inject dependencies
-   - Dễ test, dễ thay đổi
+```javascript
+// ✅ Inject dependencies
+class UserService {
+  constructor(userRepository) {
+    this.userRepository = userRepository;
+  }
+}
 
-4. **Interface Segregation**
+// ❌ Tạo dependency bên trong
+class UserService {
+  constructor() {
+    this.userRepository = new UserRepository(); // Khó test
+  }
+}
+```
 
-   - Define interfaces
-   - Code to interface, not implementation
+### 4. Code to Interface
 
-5. **Keep it Consistent**
-   - Chọn 1 pattern và stick với nó
-   - Document decisions
+```typescript
+// ✅ Depend on interface
+class UserService {
+  constructor(private repo: IUserRepository) {}
+}
+
+// ❌ Depend on implementation
+class UserService {
+  constructor(private repo: PrismaUserRepository) {}
+}
+```
+
+### 5. Keep it Consistent
+
+```
+- Chọn 1 pattern và stick với nó
+- Document decisions
+- Team phải hiểu và follow
+```
+
+## 9. Quick Reference
+
+### Chọn pattern theo câu hỏi:
+
+| Câu hỏi                  | Nếu Yes            | Nếu No     |
+| ------------------------ | ------------------ | ---------- |
+| Project < 6 tháng?       | MVC                | Xem tiếp   |
+| Controller > 100 lines?  | + Service          | Giữ nguyên |
+| Cần unit test business?  | + Service          | Giữ nguyên |
+| Có thể đổi database?     | + Repository       | Giữ nguyên |
+| Team > 5 người?          | Clean Architecture | Giữ nguyên |
+| Business logic phức tạp? | Clean Architecture | Giữ nguyên |
+
+## 10. Tổng kết
+
+**MVC:** Default choice, simple projects
+**MVVM:** Frontend SPAs với data binding
+**MVP:** Mobile/Desktop cần testability
+**Clean Architecture:** Enterprise, long-term
+**Repository:** Abstract data access
+**Service Layer:** Tách business logic
+
+**Nguyên tắc:**
+
+1. Start simple
+2. Refactor when needed
+3. Don't over-engineer
+4. Keep it consistent
+5. Document decisions

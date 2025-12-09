@@ -1,46 +1,93 @@
 # MVC Pattern (Model - View - Controller)
 
-## 1. Tổng quan
+## 1. Khái niệm
 
-MVC là mô hình kiến trúc phổ biến nhất, tách ứng dụng thành 3 thành phần độc lập.
+**MVC (Model-View-Controller)** là một mô hình kiến trúc phần mềm chia ứng dụng thành 3 thành phần riêng biệt, mỗi thành phần đảm nhận một nhiệm vụ cụ thể. Đây là pattern phổ biến nhất trong phát triển web.
+
+### Tại sao cần MVC?
+
+Trước khi có MVC, code thường được viết lẫn lộn:
+
+- Logic xử lý dữ liệu
+- Logic hiển thị giao diện
+- Logic điều khiển luồng chương trình
+
+Điều này dẫn đến:
+
+- Code khó đọc, khó bảo trì
+- Khó test từng phần riêng lẻ
+- Thay đổi 1 chỗ ảnh hưởng nhiều chỗ khác
+- Khó làm việc nhóm
+
+**MVC giải quyết bằng cách tách biệt các concerns (Separation of Concerns).**
+
+## 2. Các thành phần
 
 ```
         User Request
              │
              ▼
       ┌─────────────┐
-      │  Controller │ ◄── Nhận request, điều phối
+      │  Controller │ ← Nhận request, điều phối
       └──────┬──────┘
              │
      ┌───────┴───────┐
      ▼               ▼
 ┌─────────┐    ┌─────────┐
-│  Model  │    │  View   │
-│ (Data)  │───►│  (UI)   │
+│  Model  │───►│  View   │
+│ (Data)  │    │  (UI)   │
 └─────────┘    └─────────┘
                     │
                     ▼
               User Response
 ```
 
-## 2. Các thành phần
+### Model - "Dữ liệu và Logic nghiệp vụ"
 
-### Model
+**Khái niệm:** Model đại diện cho dữ liệu và các quy tắc nghiệp vụ của ứng dụng.
 
-- Quản lý data và business logic
+**Nhiệm vụ:**
+
+- Quản lý dữ liệu (CRUD operations)
+- Chứa business logic (validation, calculations)
 - Tương tác với database
-- Không biết về View và Controller
+- Không biết gì về View và Controller
+
+**Tác dụng:**
+
+- Tập trung logic dữ liệu một chỗ
+- Dễ thay đổi database mà không ảnh hưởng phần khác
+- Có thể reuse ở nhiều nơi
 
 ```javascript
 // models/User.js
 const mongoose = require("mongoose");
 
 const userSchema = new mongoose.Schema({
-  email: { type: String, required: true, unique: true },
-  name: { type: String, required: true },
-  password: { type: String, required: true },
-  role: { type: String, enum: ["user", "admin"], default: "user" },
-  createdAt: { type: Date, default: Date.now },
+  email: {
+    type: String,
+    required: [true, "Email là bắt buộc"],
+    unique: true,
+    lowercase: true,
+  },
+  name: {
+    type: String,
+    required: [true, "Tên là bắt buộc"],
+  },
+  password: {
+    type: String,
+    required: true,
+    minlength: 6,
+  },
+  role: {
+    type: String,
+    enum: ["user", "admin"],
+    default: "user",
+  },
+  createdAt: {
+    type: Date,
+    default: Date.now,
+  },
 });
 
 // Business logic trong Model
@@ -48,39 +95,63 @@ userSchema.methods.isAdmin = function () {
   return this.role === "admin";
 };
 
+userSchema.methods.canEdit = function (resource) {
+  return this.isAdmin() || resource.userId === this.id;
+};
+
 userSchema.statics.findByEmail = function (email) {
   return this.findOne({ email: email.toLowerCase() });
 };
 
+// Middleware - hash password trước khi save
+userSchema.pre("save", async function (next) {
+  if (this.isModified("password")) {
+    this.password = await bcrypt.hash(this.password, 10);
+  }
+  next();
+});
+
 module.exports = mongoose.model("User", userSchema);
 ```
 
-### View
+### View - "Giao diện người dùng"
 
-- Hiển thị data cho user
-- Nhận data từ Controller
+**Khái niệm:** View chịu trách nhiệm hiển thị dữ liệu cho người dùng.
+
+**Nhiệm vụ:**
+
+- Render giao diện (HTML, JSON, XML...)
+- Nhận dữ liệu từ Controller để hiển thị
 - Không chứa business logic
+- Không truy cập trực tiếp database
+
+**Tác dụng:**
+
+- Tách biệt phần hiển thị
+- Dễ thay đổi giao diện mà không ảnh hưởng logic
+- Designer có thể làm việc độc lập
 
 ```ejs
 <!-- views/users/index.ejs -->
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Users List</title>
+  <title>Danh sách Users</title>
 </head>
 <body>
-  <h1>Users</h1>
+  <h1>Danh sách người dùng</h1>
 
+  <!-- View chỉ hiển thị dữ liệu được truyền vào -->
   <% if (users.length === 0) { %>
-    <p>No users found.</p>
+    <p>Chưa có người dùng nào.</p>
   <% } else { %>
     <table>
       <thead>
         <tr>
-          <th>Name</th>
+          <th>Tên</th>
           <th>Email</th>
-          <th>Role</th>
-          <th>Actions</th>
+          <th>Vai trò</th>
+          <th>Thao tác</th>
         </tr>
       </thead>
       <tbody>
@@ -90,8 +161,8 @@ module.exports = mongoose.model("User", userSchema);
             <td><%= user.email %></td>
             <td><%= user.role %></td>
             <td>
-              <a href="/users/<%= user.id %>">View</a>
-              <a href="/users/<%= user.id %>/edit">Edit</a>
+              <a href="/users/<%= user.id %>">Xem</a>
+              <a href="/users/<%= user.id %>/edit">Sửa</a>
             </td>
           </tr>
         <% }) %>
@@ -99,96 +170,146 @@ module.exports = mongoose.model("User", userSchema);
     </table>
   <% } %>
 
-  <a href="/users/new">Create New User</a>
+  <a href="/users/new">Thêm người dùng mới</a>
+
+  <!-- Hiển thị thông báo nếu có -->
+  <% if (message) { %>
+    <div class="alert"><%= message %></div>
+  <% } %>
 </body>
 </html>
 ```
 
-### Controller
+### Controller - "Điều phối viên"
 
-- Nhận request từ user
-- Gọi Model để lấy/xử lý data
-- Chọn View để render response
+**Khái niệm:** Controller là cầu nối giữa Model và View, xử lý các request từ người dùng.
+
+**Nhiệm vụ:**
+
+- Nhận request từ user (qua routes)
+- Gọi Model để lấy/xử lý dữ liệu
+- Chọn View phù hợp để render response
+- Xử lý input validation cơ bản
+- Điều hướng (redirect)
+
+**Tác dụng:**
+
+- Điều phối luồng xử lý
+- Kết nối Model và View
+- Tập trung xử lý HTTP request/response
 
 ```javascript
 // controllers/userController.js
 const User = require("../models/User");
 
 const userController = {
-  // GET /users
+  // GET /users - Hiển thị danh sách
   async index(req, res) {
     try {
+      // 1. Gọi Model lấy dữ liệu
       const users = await User.find().sort({ createdAt: -1 });
-      res.render("users/index", { users });
+
+      // 2. Truyền dữ liệu cho View
+      res.render("users/index", {
+        users,
+        message: req.flash("message"),
+      });
     } catch (error) {
-      res.status(500).render("error", { message: error.message });
+      res.status(500).render("error", { message: "Lỗi server" });
     }
   },
 
-  // GET /users/:id
+  // GET /users/:id - Xem chi tiết
   async show(req, res) {
     try {
       const user = await User.findById(req.params.id);
+
       if (!user) {
-        return res.status(404).render("error", { message: "User not found" });
+        return res.status(404).render("error", {
+          message: "Không tìm thấy người dùng",
+        });
       }
+
       res.render("users/show", { user });
     } catch (error) {
-      res.status(500).render("error", { message: error.message });
+      res.status(500).render("error", { message: "Lỗi server" });
     }
   },
 
-  // GET /users/new
+  // GET /users/new - Form tạo mới
   new(req, res) {
-    res.render("users/new");
+    res.render("users/new", { errors: [] });
   },
 
-  // POST /users
+  // POST /users - Xử lý tạo mới
   async create(req, res) {
     try {
       const { email, name, password } = req.body;
+
+      // Tạo user mới qua Model
       const user = new User({ email, name, password });
       await user.save();
+
+      // Redirect sau khi tạo thành công
+      req.flash("message", "Tạo người dùng thành công!");
       res.redirect(`/users/${user.id}`);
     } catch (error) {
-      res.status(400).render("users/new", { error: error.message });
+      // Validation error - render lại form với lỗi
+      res.status(400).render("users/new", {
+        errors: [error.message],
+        data: req.body,
+      });
     }
   },
 
-  // GET /users/:id/edit
+  // GET /users/:id/edit - Form chỉnh sửa
   async edit(req, res) {
     try {
       const user = await User.findById(req.params.id);
+
       if (!user) {
-        return res.status(404).render("error", { message: "User not found" });
+        return res.status(404).render("error", {
+          message: "Không tìm thấy người dùng",
+        });
       }
-      res.render("users/edit", { user });
+
+      res.render("users/edit", { user, errors: [] });
     } catch (error) {
-      res.status(500).render("error", { message: error.message });
+      res.status(500).render("error", { message: "Lỗi server" });
     }
   },
 
-  // PUT /users/:id
+  // PUT /users/:id - Xử lý cập nhật
   async update(req, res) {
     try {
       const { name, email } = req.body;
+
       const user = await User.findByIdAndUpdate(req.params.id, { name, email }, { new: true, runValidators: true });
+
       if (!user) {
-        return res.status(404).render("error", { message: "User not found" });
+        return res.status(404).render("error", {
+          message: "Không tìm thấy người dùng",
+        });
       }
+
+      req.flash("message", "Cập nhật thành công!");
       res.redirect(`/users/${user.id}`);
     } catch (error) {
-      res.status(400).render("users/edit", { error: error.message });
+      res.status(400).render("users/edit", {
+        errors: [error.message],
+      });
     }
   },
 
-  // DELETE /users/:id
+  // DELETE /users/:id - Xóa
   async destroy(req, res) {
     try {
       await User.findByIdAndDelete(req.params.id);
+
+      req.flash("message", "Đã xóa người dùng");
       res.redirect("/users");
     } catch (error) {
-      res.status(500).render("error", { message: error.message });
+      res.status(500).render("error", { message: "Lỗi server" });
     }
   },
 };
@@ -196,103 +317,68 @@ const userController = {
 module.exports = userController;
 ```
 
-## 3. Routes
-
-```javascript
-// routes/users.js
-const express = require("express");
-const router = express.Router();
-const userController = require("../controllers/userController");
-
-router.get("/", userController.index);
-router.get("/new", userController.new);
-router.post("/", userController.create);
-router.get("/:id", userController.show);
-router.get("/:id/edit", userController.edit);
-router.put("/:id", userController.update);
-router.delete("/:id", userController.destroy);
-
-module.exports = router;
-```
-
-## 4. Cấu trúc thư mục
+## 3. Luồng hoạt động
 
 ```
-project/
-├── app.js
-├── config/
-│   └── database.js
-├── controllers/
-│   ├── userController.js
-│   ├── productController.js
-│   └── orderController.js
-├── models/
-│   ├── User.js
-│   ├── Product.js
-│   └── Order.js
-├── views/
-│   ├── layouts/
-│   │   └── main.ejs
-│   ├── users/
-│   │   ├── index.ejs
-│   │   ├── show.ejs
-│   │   ├── new.ejs
-│   │   └── edit.ejs
-│   └── error.ejs
-├── routes/
-│   ├── index.js
-│   └── users.js
-├── public/
-│   ├── css/
-│   └── js/
-└── package.json
+1. User gửi request: GET /users/123
+
+2. Router nhận request, chuyển đến Controller:
+   router.get('/users/:id', userController.show)
+
+3. Controller xử lý:
+   - Lấy id từ params
+   - Gọi Model: User.findById(id)
+   - Nhận data từ Model
+   - Gọi View: res.render('users/show', { user })
+
+4. View render HTML với data
+
+5. Response trả về cho User
 ```
 
-## 5. MVC cho REST API
+## 4. MVC cho REST API
 
 Khi làm API, View được thay bằng JSON response:
 
 ```javascript
 // controllers/api/userController.js
-const User = require("../../models/User");
-
-const userController = {
+const userApiController = {
   // GET /api/users
   async index(req, res) {
     try {
-      const { page = 1, limit = 10 } = req.query;
-      const users = await User.find()
-        .select("-password")
+      const { page = 1, limit = 10, search } = req.query;
+
+      // Build query
+      const query = {};
+      if (search) {
+        query.name = { $regex: search, $options: "i" };
+      }
+
+      // Lấy data từ Model
+      const users = await User.find(query)
+        .select("-password") // Không trả về password
         .limit(limit)
         .skip((page - 1) * limit)
         .sort({ createdAt: -1 });
 
-      const total = await User.countDocuments();
+      const total = await User.countDocuments(query);
 
+      // Trả về JSON thay vì render View
       res.json({
+        success: true,
         data: users,
         pagination: {
           page: parseInt(page),
           limit: parseInt(limit),
           total,
-          pages: Math.ceil(total / limit),
+          totalPages: Math.ceil(total / limit),
         },
       });
     } catch (error) {
-      res.status(500).json({ error: error.message });
-    }
-  },
-
-  // GET /api/users/:id
-  async show(req, res) {
-    try {
-      const user = await User.findById(req.params.id).select("-password");
-      if (!user) {
-        return res.status(404).json({ error: "User not found" });
-      }
-      res.json({ data: user });
-    } catch (error) {
-      res.status(500).json({ error: error.message });
+      res.status(500).json({
+        success: false,
+        error: error.message,
+      });
     }
   },
 
@@ -301,65 +387,203 @@ const userController = {
     try {
       const user = new User(req.body);
       await user.save();
-      res.status(201).json({ data: user });
-    } catch (error) {
-      res.status(400).json({ error: error.message });
-    }
-  },
 
-  // PUT /api/users/:id
-  async update(req, res) {
-    try {
-      const user = await User.findByIdAndUpdate(req.params.id, req.body, { new: true, runValidators: true }).select(
-        "-password"
-      );
+      // Không trả về password
+      const userResponse = user.toObject();
+      delete userResponse.password;
 
-      if (!user) {
-        return res.status(404).json({ error: "User not found" });
-      }
-      res.json({ data: user });
+      res.status(201).json({
+        success: true,
+        data: userResponse,
+      });
     } catch (error) {
-      res.status(400).json({ error: error.message });
-    }
-  },
-
-  // DELETE /api/users/:id
-  async destroy(req, res) {
-    try {
-      const user = await User.findByIdAndDelete(req.params.id);
-      if (!user) {
-        return res.status(404).json({ error: "User not found" });
-      }
-      res.status(204).send();
-    } catch (error) {
-      res.status(500).json({ error: error.message });
+      res.status(400).json({
+        success: false,
+        error: error.message,
+      });
     }
   },
 };
-
-module.exports = userController;
 ```
 
-## 6. Ưu và Nhược điểm
+## 5. Cấu trúc thư mục MVC
 
-### Ưu điểm
+```
+project/
+├── app.js                 # Entry point
+├── config/
+│   ├── database.js        # Database connection
+│   └── config.js          # App configuration
+├── controllers/
+│   ├── userController.js
+│   ├── productController.js
+│   └── api/
+│       └── userController.js
+├── models/
+│   ├── User.js
+│   └── Product.js
+├── views/
+│   ├── layouts/
+│   │   └── main.ejs       # Layout chung
+│   ├── users/
+│   │   ├── index.ejs
+│   │   ├── show.ejs
+│   │   ├── new.ejs
+│   │   └── edit.ejs
+│   ├── partials/
+│   │   ├── header.ejs
+│   │   └── footer.ejs
+│   └── error.ejs
+├── routes/
+│   ├── index.js
+│   ├── users.js
+│   └── api.js
+├── public/                # Static files
+│   ├── css/
+│   ├── js/
+│   └── images/
+├── middleware/
+│   ├── auth.js
+│   └── errorHandler.js
+└── package.json
+```
 
-- ✅ Dễ hiểu, dễ học
-- ✅ Phân tách rõ ràng responsibilities
-- ✅ Phổ biến, nhiều tài liệu
-- ✅ Phù hợp với hầu hết web frameworks
+## 6. Routes - Kết nối URL với Controller
 
-### Nhược điểm
+```javascript
+// routes/users.js
+const express = require("express");
+const router = express.Router();
+const userController = require("../controllers/userController");
+const { isAuthenticated, isAdmin } = require("../middleware/auth");
 
-- ❌ Controller có thể phình to (Fat Controller)
-- ❌ Model có thể chứa quá nhiều logic
-- ❌ Khó test khi logic phức tạp
-- ❌ Không rõ ràng nơi đặt business logic phức tạp
+// Public routes
+router.get("/", userController.index);
+router.get("/:id", userController.show);
 
-## 7. Khi nào dùng MVC?
+// Protected routes - cần đăng nhập
+router.get("/new", isAuthenticated, userController.new);
+router.post("/", isAuthenticated, userController.create);
+router.get("/:id/edit", isAuthenticated, userController.edit);
+router.put("/:id", isAuthenticated, userController.update);
+router.delete("/:id", isAuthenticated, isAdmin, userController.destroy);
 
-- ✅ Small to medium projects
-- ✅ CRUD applications
-- ✅ Team mới làm quen với patterns
-- ✅ Prototypes, MVPs
-- ❌ Không phù hợp cho enterprise apps phức tạp (nên dùng Clean Architecture)
+module.exports = router;
+
+// app.js
+const userRoutes = require("./routes/users");
+app.use("/users", userRoutes);
+```
+
+## 7. Ưu điểm của MVC
+
+| Ưu điểm                    | Giải thích                                      |
+| -------------------------- | ----------------------------------------------- |
+| **Separation of Concerns** | Mỗi thành phần có nhiệm vụ riêng, code rõ ràng  |
+| **Dễ bảo trì**             | Thay đổi 1 phần không ảnh hưởng phần khác       |
+| **Dễ test**                | Có thể test Model độc lập                       |
+| **Làm việc nhóm**          | Frontend làm View, Backend làm Model/Controller |
+| **Reusable**               | Model có thể dùng ở nhiều Controller            |
+| **Phổ biến**               | Nhiều framework hỗ trợ, tài liệu phong phú      |
+
+## 8. Nhược điểm của MVC
+
+| Nhược điểm         | Giải thích                                 |
+| ------------------ | ------------------------------------------ |
+| **Fat Controller** | Controller dễ phình to khi logic phức tạp  |
+| **Fat Model**      | Model có thể chứa quá nhiều business logic |
+| **Tight coupling** | View và Model có thể bị phụ thuộc nhau     |
+| **Không rõ ràng**  | Business logic phức tạp không biết đặt đâu |
+
+## 9. Khi nào dùng MVC?
+
+### ✅ Phù hợp khi:
+
+- Small to medium projects
+- CRUD applications đơn giản
+- Team mới làm quen với patterns
+- Prototypes, MVPs
+- Server-rendered web apps
+- REST APIs đơn giản
+
+### ❌ Không phù hợp khi:
+
+- Business logic rất phức tạp → Dùng Clean Architecture
+- Cần high testability → Thêm Service Layer
+- Enterprise applications lớn
+- Microservices
+
+## 10. Tiến hóa từ MVC
+
+Khi project phát triển, MVC có thể được mở rộng:
+
+```
+MVC đơn giản
+    │
+    ▼ (Controller phình to)
+MVC + Service Layer
+    │
+    ▼ (Cần abstract database)
+MVC + Service + Repository
+    │
+    ▼ (Business logic phức tạp)
+Clean Architecture
+```
+
+## 11. Best Practices
+
+1. **Thin Controller**: Controller chỉ điều phối, không chứa business logic
+2. **Fat Model**: Business logic nên ở Model
+3. **Không gọi Model từ View**: View chỉ nhận data đã xử lý
+4. **Validation**: Validate ở cả Controller (input) và Model (business rules)
+5. **Error Handling**: Xử lý lỗi tập trung qua middleware
+
+```javascript
+// ❌ Bad: Fat Controller
+async create(req, res) {
+  // Quá nhiều logic trong controller
+  const { email, password } = req.body;
+
+  // Validation
+  if (!email || !email.includes('@')) {
+    return res.status(400).json({ error: 'Invalid email' });
+  }
+
+  // Check exists
+  const existing = await User.findOne({ email });
+  if (existing) {
+    return res.status(400).json({ error: 'Email exists' });
+  }
+
+  // Hash password
+  const hashedPassword = await bcrypt.hash(password, 10);
+
+  // Create user
+  const user = await User.create({ email, password: hashedPassword });
+
+  // Send email
+  await sendWelcomeEmail(user.email);
+
+  res.status(201).json(user);
+}
+
+// ✅ Good: Thin Controller, logic ở Model/Service
+async create(req, res) {
+  try {
+    const user = await User.createWithValidation(req.body);
+    res.status(201).json({ data: user });
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+}
+```
+
+## 12. Tổng kết
+
+**MVC là gì?** Pattern chia ứng dụng thành 3 phần: Model (data), View (UI), Controller (điều phối).
+
+**Tại sao dùng?** Tách biệt concerns, dễ bảo trì, dễ làm việc nhóm.
+
+**Khi nào dùng?** Small-medium projects, CRUD apps, khi bắt đầu học patterns.
+
+**Nhớ:** MVC là điểm khởi đầu tốt, có thể mở rộng thêm Service Layer, Repository khi cần.

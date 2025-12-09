@@ -1,57 +1,108 @@
 # Testing trong Node.js
 
-## 1. Testing Frameworks
+## 1. Khái niệm
 
-### Jest (Recommended)
+### Tại sao cần Testing?
+
+- **Phát hiện bugs sớm:** Trước khi deploy
+- **Tự tin refactor:** Biết code vẫn hoạt động
+- **Documentation:** Tests mô tả cách code hoạt động
+- **Regression prevention:** Tránh lỗi cũ quay lại
+
+### Các loại Testing
+
+| Loại                 | Mô tả                              | Tốc độ     | Coverage   |
+| -------------------- | ---------------------------------- | ---------- | ---------- |
+| **Unit Test**        | Test từng function/module riêng lẻ | Nhanh      | Hẹp        |
+| **Integration Test** | Test nhiều components kết hợp      | Trung bình | Trung bình |
+| **E2E Test**         | Test toàn bộ flow từ đầu đến cuối  | Chậm       | Rộng       |
+
+### Testing Pyramid
+
+```
+        /\
+       /  \      E2E Tests (ít)
+      /----\
+     /      \    Integration Tests (vừa)
+    /--------\
+   /          \  Unit Tests (nhiều)
+  /------------\
+```
+
+## 2. Jest - Testing Framework
+
+### Khái niệm
+
+**Jest** là testing framework phổ biến nhất cho JavaScript, cung cấp test runner, assertions, mocking trong một package.
+
+### Cài đặt
 
 ```bash
 npm install jest @types/jest -D
 ```
 
+```json
+// package.json
+{
+  "scripts": {
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage"
+  }
+}
+```
+
+### Cấu trúc Test cơ bản
+
 ```javascript
-// sum.js
-function sum(a, b) {
+// math.js
+function add(a, b) {
   return a + b;
 }
-module.exports = sum;
 
-// sum.test.js
-const sum = require("./sum");
+function divide(a, b) {
+  if (b === 0) throw new Error("Cannot divide by zero");
+  return a / b;
+}
 
-describe("sum function", () => {
-  test("adds 1 + 2 to equal 3", () => {
-    expect(sum(1, 2)).toBe(3);
+module.exports = { add, divide };
+
+// math.test.js
+const { add, divide } = require("./math");
+
+describe("Math functions", () => {
+  describe("add", () => {
+    test("adds 1 + 2 to equal 3", () => {
+      expect(add(1, 2)).toBe(3);
+    });
+
+    test("adds negative numbers", () => {
+      expect(add(-1, -2)).toBe(-3);
+    });
+
+    test("adds zero", () => {
+      expect(add(5, 0)).toBe(5);
+    });
   });
 
-  test("adds negative numbers", () => {
-    expect(sum(-1, -2)).toBe(-3);
+  describe("divide", () => {
+    test("divides 10 / 2 to equal 5", () => {
+      expect(divide(10, 2)).toBe(5);
+    });
+
+    test("throws error when dividing by zero", () => {
+      expect(() => divide(10, 0)).toThrow("Cannot divide by zero");
+    });
   });
 });
 ```
 
-### Mocha + Chai
-
-```bash
-npm install mocha chai -D
-```
-
-```javascript
-const { expect } = require("chai");
-const sum = require("./sum");
-
-describe("sum function", () => {
-  it("should add 1 + 2 to equal 3", () => {
-    expect(sum(1, 2)).to.equal(3);
-  });
-});
-```
-
-## 2. Jest Matchers
+### Jest Matchers
 
 ```javascript
 // Equality
-expect(value).toBe(3); // ===
-expect(value).toEqual({ a: 1 }); // Deep equality
+expect(value).toBe(3); // === (primitive)
+expect(value).toEqual({ a: 1 }); // Deep equality (objects)
 expect(value).toStrictEqual(obj); // Strict deep equality
 
 // Truthiness
@@ -74,6 +125,7 @@ expect(string).toContain("substring");
 // Arrays
 expect(array).toContain(item);
 expect(array).toHaveLength(3);
+expect(array).toContainEqual({ name: "John" });
 
 // Objects
 expect(obj).toHaveProperty("key");
@@ -88,18 +140,32 @@ expect(() => fn()).toThrow("error message");
 // Async
 await expect(asyncFn()).resolves.toBe(value);
 await expect(asyncFn()).rejects.toThrow();
+
+// Negation
+expect(value).not.toBe(3);
 ```
 
 ## 3. Mocking
 
+### Khái niệm
+
+**Mocking** là kỹ thuật thay thế dependencies thật bằng fake implementations để isolate unit đang test.
+
 ### Mock Functions
 
 ```javascript
-// Create mock function
+// Tạo mock function
 const mockFn = jest.fn();
+
+// Mock return value
 mockFn.mockReturnValue(42);
-mockFn.mockReturnValueOnce(10);
+mockFn.mockReturnValueOnce(10); // Chỉ lần đầu
+
+// Mock async
 mockFn.mockResolvedValue({ data: "async" });
+mockFn.mockRejectedValue(new Error("Failed"));
+
+// Mock implementation
 mockFn.mockImplementation((a, b) => a + b);
 
 // Assertions
@@ -118,17 +184,22 @@ module.exports = {
   post: jest.fn(() => Promise.resolve({ data: {} })),
 };
 
-// test file
+// userService.test.js
 jest.mock("axios");
 const axios = require("axios");
+const { getUsers } = require("./userService");
 
-test("fetches data", async () => {
-  axios.get.mockResolvedValue({ data: { users: [] } });
+test("fetches users", async () => {
+  // Arrange
+  const users = [{ id: 1, name: "John" }];
+  axios.get.mockResolvedValue({ data: users });
 
-  const result = await fetchUsers();
+  // Act
+  const result = await getUsers();
 
+  // Assert
   expect(axios.get).toHaveBeenCalledWith("/api/users");
-  expect(result).toEqual({ users: [] });
+  expect(result).toEqual(users);
 });
 ```
 
@@ -145,6 +216,7 @@ spy.mockReturnValue("mocked");
 obj.method(); // 'mocked'
 
 expect(spy).toHaveBeenCalled();
+
 spy.mockRestore(); // Restore original
 ```
 
@@ -155,7 +227,7 @@ spy.mockRestore(); // Restore original
 test("callback test", (done) => {
   fetchData((data) => {
     expect(data).toBe("data");
-    done();
+    done(); // Báo test hoàn thành
   });
 });
 
@@ -171,21 +243,52 @@ test("async test", async () => {
   const data = await fetchData();
   expect(data).toBe("data");
 });
+
+// Resolves/Rejects
+test("resolves", async () => {
+  await expect(fetchData()).resolves.toBe("data");
+});
+
+test("rejects", async () => {
+  await expect(fetchBadData()).rejects.toThrow("Error");
+});
 ```
 
 ## 5. Integration Testing với Supertest
+
+### Khái niệm
+
+**Supertest** cho phép test HTTP endpoints mà không cần start server thật.
 
 ```bash
 npm install supertest -D
 ```
 
 ```javascript
+// app.js
+const express = require("express");
+const app = express();
+
+app.use(express.json());
+
+app.get("/api/users", (req, res) => {
+  res.json({ users: [] });
+});
+
+app.post("/api/users", (req, res) => {
+  const { name, email } = req.body;
+  res.status(201).json({ id: 1, name, email });
+});
+
+module.exports = app;
+
+// app.test.js
 const request = require("supertest");
-const app = require("../app");
+const app = require("./app");
 
 describe("User API", () => {
   describe("GET /api/users", () => {
-    it("should return all users", async () => {
+    test("should return all users", async () => {
       const res = await request(app).get("/api/users").expect("Content-Type", /json/).expect(200);
 
       expect(res.body).toHaveProperty("users");
@@ -194,20 +297,24 @@ describe("User API", () => {
   });
 
   describe("POST /api/users", () => {
-    it("should create a new user", async () => {
+    test("should create a new user", async () => {
       const userData = {
-        email: "test@example.com",
-        name: "Test User",
+        name: "John Doe",
+        email: "john@example.com",
       };
 
-      const res = await request(app).post("/api/users").send(userData).expect(201);
+      const res = await request(app).post("/api/users").send(userData).expect("Content-Type", /json/).expect(201);
 
       expect(res.body).toHaveProperty("id");
+      expect(res.body.name).toBe(userData.name);
       expect(res.body.email).toBe(userData.email);
     });
 
-    it("should return 400 for invalid data", async () => {
-      const res = await request(app).post("/api/users").send({ name: "No Email" }).expect(400);
+    test("should return 400 for invalid data", async () => {
+      const res = await request(app)
+        .post("/api/users")
+        .send({ name: "" }) // Invalid
+        .expect(400);
 
       expect(res.body).toHaveProperty("error");
     });
@@ -217,14 +324,19 @@ describe("User API", () => {
     let token;
 
     beforeAll(async () => {
+      // Login để lấy token
       const res = await request(app).post("/api/login").send({ email: "admin@test.com", password: "password" });
       token = res.body.token;
     });
 
-    it("should access protected route with token", async () => {
+    test("should access protected route with token", async () => {
       const res = await request(app).get("/api/profile").set("Authorization", `Bearer ${token}`).expect(200);
 
       expect(res.body).toHaveProperty("user");
+    });
+
+    test("should reject without token", async () => {
+      await request(app).get("/api/profile").expect(401);
     });
   });
 });
@@ -233,12 +345,15 @@ describe("User API", () => {
 ## 6. Database Testing
 
 ```javascript
+// Dùng in-memory database cho tests
 const { MongoMemoryServer } = require("mongodb-memory-server");
 const mongoose = require("mongoose");
+const User = require("./models/User");
 
 let mongoServer;
 
 beforeAll(async () => {
+  // Start in-memory MongoDB
   mongoServer = await MongoMemoryServer.create();
   await mongoose.connect(mongoServer.getUri());
 });
@@ -249,21 +364,37 @@ afterAll(async () => {
 });
 
 beforeEach(async () => {
-  // Clear all collections
-  const collections = mongoose.connection.collections;
-  for (const key in collections) {
-    await collections[key].deleteMany({});
-  }
+  // Clear database trước mỗi test
+  await User.deleteMany({});
 });
 
-test("should create user", async () => {
-  const user = await User.create({
-    email: "test@example.com",
-    name: "Test",
+describe("User Model", () => {
+  test("should create user", async () => {
+    const user = await User.create({
+      email: "test@example.com",
+      name: "Test User",
+      password: "password123",
+    });
+
+    expect(user._id).toBeDefined();
+    expect(user.email).toBe("test@example.com");
   });
 
-  expect(user._id).toBeDefined();
-  expect(user.email).toBe("test@example.com");
+  test("should not create user with duplicate email", async () => {
+    await User.create({
+      email: "test@example.com",
+      name: "User 1",
+      password: "password",
+    });
+
+    await expect(
+      User.create({
+        email: "test@example.com",
+        name: "User 2",
+        password: "password",
+      })
+    ).rejects.toThrow();
+  });
 });
 ```
 
@@ -272,10 +403,6 @@ test("should create user", async () => {
 ```json
 // package.json
 {
-  "scripts": {
-    "test": "jest",
-    "test:coverage": "jest --coverage"
-  },
   "jest": {
     "collectCoverageFrom": ["src/**/*.js", "!src/**/*.test.js"],
     "coverageThreshold": {
@@ -290,13 +417,78 @@ test("should create user", async () => {
 }
 ```
 
+```bash
+npm run test:coverage
+```
+
 ## 8. Best Practices
 
-1. **AAA Pattern**: Arrange, Act, Assert
-2. **One assertion per test** (khi có thể)
-3. **Descriptive test names**
-4. **Test behavior, not implementation**
-5. **Isolate tests** - không phụ thuộc lẫn nhau
-6. **Mock external dependencies**
-7. **Use factories** cho test data
-8. **Clean up** sau mỗi test
+### AAA Pattern
+
+```javascript
+test("should calculate total", () => {
+  // Arrange - Setup
+  const cart = new Cart();
+  cart.addItem({ price: 100, quantity: 2 });
+  cart.addItem({ price: 50, quantity: 1 });
+
+  // Act - Execute
+  const total = cart.getTotal();
+
+  // Assert - Verify
+  expect(total).toBe(250);
+});
+```
+
+### Descriptive Test Names
+
+```javascript
+// ❌ Bad
+test("test1", () => {});
+
+// ✅ Good
+test("should return empty array when no users exist", () => {});
+test("should throw error when email is invalid", () => {});
+```
+
+### Isolate Tests
+
+```javascript
+// ❌ Bad - Tests phụ thuộc nhau
+let user;
+test("create user", () => {
+  user = createUser();
+});
+test("update user", () => {
+  updateUser(user.id); // Phụ thuộc test trước
+});
+
+// ✅ Good - Tests độc lập
+test("create user", () => {
+  const user = createUser();
+  expect(user).toBeDefined();
+});
+test("update user", () => {
+  const user = createUser(); // Tạo mới
+  const updated = updateUser(user.id);
+  expect(updated).toBeDefined();
+});
+```
+
+## 9. Tổng kết
+
+**Unit Test:** Test từng function riêng lẻ, nhanh, nhiều.
+
+**Integration Test:** Test nhiều components, Supertest cho APIs.
+
+**Mocking:** Thay thế dependencies để isolate.
+
+**Coverage:** Đo lường % code được test.
+
+**Best Practices:**
+
+- AAA Pattern (Arrange, Act, Assert)
+- Descriptive names
+- Isolate tests
+- Mock external dependencies
+- Test edge cases

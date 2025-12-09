@@ -1,30 +1,66 @@
 # DevOps & Deployment cho Node.js
 
-## 1. Docker
+## 1. Khái niệm
+
+### DevOps là gì?
+
+**DevOps** là văn hóa và practices kết hợp Development và Operations, tự động hóa quy trình từ code đến production.
+
+### CI/CD là gì?
+
+| Khái niệm                       | Mô tả                               |
+| ------------------------------- | ----------------------------------- |
+| **CI (Continuous Integration)** | Tự động build và test khi push code |
+| **CD (Continuous Delivery)**    | Tự động deploy đến staging          |
+| **CD (Continuous Deployment)**  | Tự động deploy đến production       |
+
+## 2. Docker
+
+### Khái niệm
+
+**Docker** là platform để đóng gói ứng dụng và dependencies vào containers, đảm bảo chạy giống nhau ở mọi môi trường.
 
 ### Dockerfile
 
 ```dockerfile
 # Build stage
 FROM node:20-alpine AS builder
+
 WORKDIR /app
+
+# Copy package files
 COPY package*.json ./
+
+# Install dependencies
 RUN npm ci --only=production
 
 # Production stage
 FROM node:20-alpine
+
 WORKDIR /app
 
-# Create non-root user
+# Create non-root user (security)
 RUN addgroup -g 1001 -S nodejs && \
     adduser -S nodejs -u 1001
 
+# Copy from builder
 COPY --from=builder /app/node_modules ./node_modules
 COPY . .
 
+# Change ownership
+RUN chown -R nodejs:nodejs /app
+
+# Switch to non-root user
 USER nodejs
+
+# Expose port
 EXPOSE 3000
 
+# Health check
+HEALTHCHECK --interval=30s --timeout=3s \
+  CMD wget --no-verbose --tries=1 --spider http://localhost:3000/health || exit 1
+
+# Start command
 CMD ["node", "src/index.js"]
 ```
 
@@ -47,6 +83,8 @@ services:
       - db
       - redis
     restart: unless-stopped
+    networks:
+      - app-network
 
   db:
     image: postgres:15-alpine
@@ -56,11 +94,19 @@ services:
       POSTGRES_DB: mydb
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    networks:
+      - app-network
 
   redis:
     image: redis:7-alpine
     volumes:
       - redis_data:/data
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge
 
 volumes:
   postgres_data:
@@ -70,68 +116,88 @@ volumes:
 ### Docker Commands
 
 ```bash
-# Build
+# Build image
 docker build -t myapp .
 
-# Run
+# Run container
 docker run -p 3000:3000 -e NODE_ENV=production myapp
 
 # Docker Compose
-docker-compose up -d
-docker-compose logs -f app
-docker-compose down
+docker-compose up -d        # Start
+docker-compose logs -f app  # Logs
+docker-compose down         # Stop
+docker-compose ps           # List
 ```
 
-## 2. Environment Variables
+## 3. Environment Variables
 
-```javascript
-// .env
+### Khái niệm
+
+**Environment Variables** lưu trữ configuration bên ngoài code, cho phép thay đổi behavior mà không cần rebuild.
+
+### .env file
+
+```bash
+# .env
 NODE_ENV=development
 PORT=3000
+
+# Database
 DATABASE_URL=postgres://localhost:5432/mydb
-JWT_SECRET=your-secret-key
+
+# JWT
+JWT_SECRET=your-super-secret-key-at-least-32-chars
+JWT_EXPIRES_IN=15m
+
+# Redis
 REDIS_URL=redis://localhost:6379
 
-// config.js
-require('dotenv').config();
-
-module.exports = {
-  env: process.env.NODE_ENV || 'development',
-  port: parseInt(process.env.PORT, 10) || 3000,
-  db: {
-    url: process.env.DATABASE_URL,
-  },
-  jwt: {
-    secret: process.env.JWT_SECRET,
-    expiresIn: '15m',
-  },
-  redis: {
-    url: process.env.REDIS_URL,
-  },
-};
+# External APIs
+STRIPE_KEY=sk_test_xxx
+SENDGRID_API_KEY=SG.xxx
 ```
 
-### Validation với Joi
+### Config Module
 
 ```javascript
+// config/index.js
+require("dotenv").config();
 const Joi = require("joi");
 
+// Validation schema
 const envSchema = Joi.object({
   NODE_ENV: Joi.string().valid("development", "production", "test").required(),
   PORT: Joi.number().default(3000),
   DATABASE_URL: Joi.string().required(),
   JWT_SECRET: Joi.string().min(32).required(),
-}).unknown();
+  JWT_EXPIRES_IN: Joi.string().default("15m"),
+  REDIS_URL: Joi.string().required(),
+}).unknown(); // Cho phép env vars khác
 
-const { error, value } = envSchema.validate(process.env);
+// Validate
+const { error, value: envVars } = envSchema.validate(process.env);
 if (error) {
   throw new Error(`Config validation error: ${error.message}`);
 }
+
+// Export config
+module.exports = {
+  env: envVars.NODE_ENV,
+  port: envVars.PORT,
+  db: {
+    url: envVars.DATABASE_URL,
+  },
+  jwt: {
+    secret: envVars.JWT_SECRET,
+    expiresIn: envVars.JWT_EXPIRES_IN,
+  },
+  redis: {
+    url: envVars.REDIS_URL,
+  },
+};
 ```
 
-## 3. CI/CD
-
-### GitHub Actions
+## 4. CI/CD với GitHub Actions
 
 ```yaml
 # .github/workflows/ci.yml
@@ -139,7 +205,7 @@ name: CI/CD
 
 on:
   push:
-    branches: [main]
+    branches: [main, develop]
   pull_request:
     branches: [main]
 
@@ -179,6 +245,7 @@ jobs:
         run: npm test
         env:
           DATABASE_URL: postgres://postgres:postgres@localhost:5432/test
+          JWT_SECRET: test-secret-key-for-ci-testing-only
 
       - name: Build
         run: npm run build
@@ -193,11 +260,11 @@ jobs:
 
       - name: Deploy to production
         run: |
-          # Deploy commands here
-          echo "Deploying..."
+          echo "Deploying to production..."
+          # Add deployment commands here
 ```
 
-## 4. Logging
+## 5. Logging
 
 ### Winston
 
@@ -213,11 +280,19 @@ const logger = winston.createLogger({
   ),
   defaultMeta: { service: "my-app" },
   transports: [
-    new winston.transports.File({ filename: "error.log", level: "error" }),
-    new winston.transports.File({ filename: "combined.log" }),
+    // Error logs
+    new winston.transports.File({
+      filename: "logs/error.log",
+      level: "error",
+    }),
+    // All logs
+    new winston.transports.File({
+      filename: "logs/combined.log",
+    }),
   ],
 });
 
+// Console logging in development
 if (process.env.NODE_ENV !== "production") {
   logger.add(
     new winston.transports.Console({
@@ -228,28 +303,16 @@ if (process.env.NODE_ENV !== "production") {
 
 // Usage
 logger.info("Server started", { port: 3000 });
-logger.error("Database error", { error: err.message });
+logger.error("Database error", { error: err.message, stack: err.stack });
+logger.warn("Deprecated API called", { endpoint: "/old-api" });
+
+module.exports = logger;
 ```
 
-### Pino (High Performance)
+## 6. Health Checks
 
 ```javascript
-const pino = require("pino");
-
-const logger = pino({
-  level: process.env.LOG_LEVEL || "info",
-  transport: process.env.NODE_ENV !== "production" ? { target: "pino-pretty" } : undefined,
-});
-
-// Express middleware
-const pinoHttp = require("pino-http");
-app.use(pinoHttp({ logger }));
-```
-
-## 5. Health Checks
-
-```javascript
-// Health check endpoint
+// Health check endpoints
 app.get("/health", async (req, res) => {
   const health = {
     status: "ok",
@@ -276,23 +339,30 @@ app.get("/health", async (req, res) => {
     health.status = "degraded";
   }
 
+  // Memory check
+  const memUsage = process.memoryUsage();
+  health.checks.memory = {
+    heapUsed: `${Math.round(memUsage.heapUsed / 1024 / 1024)} MB`,
+    heapTotal: `${Math.round(memUsage.heapTotal / 1024 / 1024)} MB`,
+  };
+
   const statusCode = health.status === "ok" ? 200 : 503;
   res.status(statusCode).json(health);
 });
 
-// Readiness vs Liveness
+// Kubernetes probes
 app.get("/ready", (req, res) => {
-  // Check if app can serve traffic
+  // Readiness: App sẵn sàng nhận traffic?
   res.status(200).send("Ready");
 });
 
 app.get("/live", (req, res) => {
-  // Check if app is alive
+  // Liveness: App còn sống?
   res.status(200).send("Alive");
 });
 ```
 
-## 6. Graceful Shutdown
+## 7. Graceful Shutdown
 
 ```javascript
 const server = app.listen(PORT);
@@ -313,6 +383,9 @@ async function gracefulShutdown(signal) {
       await redis.quit();
       console.log("Redis connection closed");
 
+      // Close other resources...
+
+      console.log("Graceful shutdown complete");
       process.exit(0);
     } catch (error) {
       console.error("Error during shutdown:", error);
@@ -324,14 +397,25 @@ async function gracefulShutdown(signal) {
   setTimeout(() => {
     console.error("Forced shutdown after timeout");
     process.exit(1);
-  }, 30000);
+  }, 30000); // 30 seconds
 }
 
+// Handle signals
 process.on("SIGTERM", () => gracefulShutdown("SIGTERM"));
 process.on("SIGINT", () => gracefulShutdown("SIGINT"));
+
+// Handle uncaught errors
+process.on("uncaughtException", (error) => {
+  console.error("Uncaught Exception:", error);
+  gracefulShutdown("uncaughtException");
+});
+
+process.on("unhandledRejection", (reason, promise) => {
+  console.error("Unhandled Rejection at:", promise, "reason:", reason);
+});
 ```
 
-## 7. Nginx Reverse Proxy
+## 8. Nginx Reverse Proxy
 
 ```nginx
 server {
@@ -344,6 +428,7 @@ server {
     listen 443 ssl http2;
     server_name example.com;
 
+    # SSL
     ssl_certificate /etc/letsencrypt/live/example.com/fullchain.pem;
     ssl_certificate_key /etc/letsencrypt/live/example.com/privkey.pem;
 
@@ -358,7 +443,7 @@ server {
         add_header Cache-Control "public, immutable";
     }
 
-    # API
+    # API proxy
     location /api {
         proxy_pass http://localhost:3000;
         proxy_http_version 1.1;
@@ -368,12 +453,11 @@ server {
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
-        proxy_cache_bypass $http_upgrade;
     }
 }
 ```
 
-## 8. Deployment Checklist
+## 9. Deployment Checklist
 
 - [ ] Environment variables configured
 - [ ] Production dependencies only (`npm ci --only=production`)
@@ -387,4 +471,20 @@ server {
 - [ ] Error monitoring (Sentry)
 - [ ] PM2 or Docker for process management
 - [ ] Database migrations run
-- [ ] Backup strategy in place
+- [ ] Backup strategy
+
+## 10. Tổng kết
+
+**Docker:** Đóng gói app và dependencies vào containers.
+
+**Environment Variables:** Config bên ngoài code.
+
+**CI/CD:** Tự động test và deploy.
+
+**Logging:** Winston cho structured logging.
+
+**Health Checks:** Monitor app health.
+
+**Graceful Shutdown:** Đóng connections đúng cách.
+
+**Nginx:** Reverse proxy, SSL, static files.

@@ -4,59 +4,50 @@
 
 ### Q: Event Loop là gì và hoạt động như thế nào?
 
-**A:** Event Loop là cơ chế cho phép Node.js thực hiện non-blocking I/O operations mặc dù JavaScript là single-threaded. Nó liên tục kiểm tra Call Stack và các queues để thực thi code.
+**Trả lời:**
 
-Các phases:
-
-1. **Timers**: setTimeout, setInterval
-2. **Pending callbacks**: I/O callbacks deferred
-3. **Poll**: Lấy I/O events mới
-4. **Check**: setImmediate
-5. **Close callbacks**: socket.on('close')
-
-Giữa mỗi phase, Node.js xử lý Microtask Queue (process.nextTick, Promise).
+> Event Loop là cơ chế cho phép Node.js thực hiện non-blocking I/O mặc dù JavaScript single-threaded.
+>
+> Khi gặp async operation (đọc file, gọi API), Node.js đẩy xuống libuv xử lý. Code tiếp tục chạy không chờ. Khi operation hoàn thành, callback được đưa vào queue.
+>
+> Event Loop liên tục kiểm tra: Call Stack trống? → Lấy callback từ queue đưa vào thực thi.
+>
+> Có 6 phases: timers → pending callbacks → poll → check → close callbacks. Giữa mỗi phase, xử lý Microtask Queue.
 
 ---
 
-### Q: Sự khác biệt giữa process.nextTick() và setImmediate()?
+### Q: process.nextTick() vs setImmediate()?
 
-**A:**
+**Trả lời:**
 
-- `process.nextTick()`: Chạy ngay sau operation hiện tại, trước khi event loop tiếp tục. Thuộc Microtask Queue.
-- `setImmediate()`: Chạy trong check phase của event loop iteration tiếp theo. Thuộc Macrotask Queue.
-
-```javascript
-setImmediate(() => console.log("setImmediate"));
-process.nextTick(() => console.log("nextTick"));
-// Output: nextTick, setImmediate
-```
+> `process.nextTick()`: Chạy ngay sau operation hiện tại, trước khi Event Loop tiếp tục. Ưu tiên cao nhất trong Microtask Queue.
+>
+> `setImmediate()`: Chạy trong check phase của Event Loop iteration tiếp theo.
+>
+> Dùng nextTick khi cần chạy ngay lập tức. Dùng setImmediate cho recursive operations để tránh starve I/O.
 
 ---
 
 ### Q: Blocking vs Non-blocking I/O?
 
-**A:**
+**Trả lời:**
 
-- **Blocking**: Code chờ operation hoàn thành mới chạy tiếp. Block event loop.
-- **Non-blocking**: Code tiếp tục chạy, callback được gọi khi operation hoàn thành.
-
-```javascript
-// Blocking
-const data = fs.readFileSync("file.txt");
-
-// Non-blocking
-fs.readFile("file.txt", (err, data) => {});
-```
+> **Blocking:** Code dừng lại chờ operation hoàn thành. Ví dụ `fs.readFileSync()` - đọc xong mới chạy tiếp. Block Event Loop, các requests khác phải chờ.
+>
+> **Non-blocking:** Code tiếp tục chạy, callback được gọi khi xong. Ví dụ `fs.readFile()`. Đây là lý do Node.js handle được nhiều concurrent connections.
 
 ---
 
 ### Q: Libuv là gì?
 
-**A:** Libuv là thư viện C++ cung cấp:
+**Trả lời:**
 
-- Event loop implementation
-- Asynchronous I/O
-- Thread pool (mặc định 4 threads) cho file system, DNS, crypto operations
+> Libuv là thư viện C++ cung cấp:
+>
+> - Event Loop implementation
+> - Thread Pool (mặc định 4 threads) cho file system, DNS, crypto
+> - Async I/O operations
+> - Cross-platform support
 
 ---
 
@@ -64,29 +55,32 @@ fs.readFile("file.txt", (err, data) => {});
 
 ### Q: Callback Hell là gì và cách giải quyết?
 
-**A:** Callback Hell là tình trạng nested callbacks quá sâu, khó đọc và maintain.
+**Trả lời:**
 
-Giải quyết:
-
-1. **Promises**: Chain `.then()`
-2. **Async/Await**: Viết code async như sync
-3. **Modularize**: Tách thành functions nhỏ
+> Callback Hell là tình trạng nested callbacks quá sâu, khó đọc và maintain.
+>
+> Giải quyết:
+>
+> 1. **Promises:** Chain `.then()` thay vì nest
+> 2. **Async/Await:** Viết code async như sync
+> 3. **Modularize:** Tách thành functions nhỏ
 
 ---
 
 ### Q: Promise.all vs Promise.allSettled vs Promise.race?
 
-**A:**
+**Trả lời:**
 
-- `Promise.all`: Chờ tất cả resolve, reject ngay nếu 1 reject
-- `Promise.allSettled`: Chờ tất cả complete (không fail)
-- `Promise.race`: Trả về kết quả đầu tiên (resolve hoặc reject)
+> - `Promise.all`: Chờ TẤT CẢ resolve, reject ngay nếu 1 reject
+> - `Promise.allSettled`: Chờ tất cả complete (không fail)
+> - `Promise.race`: Trả về kết quả ĐẦU TIÊN (resolve hoặc reject)
+> - `Promise.any`: Trả về fulfilled ĐẦU TIÊN (bỏ qua reject)
 
 ---
 
 ### Q: Xử lý error trong async/await?
 
-**A:**
+**Trả lời:**
 
 ```javascript
 // try/catch
@@ -100,7 +94,7 @@ async function getData() {
   }
 }
 
-// .catch() on promise
+// .catch() on await
 const data = await fetchData().catch((err) => null);
 ```
 
@@ -110,25 +104,32 @@ const data = await fetchData().catch((err) => null);
 
 ### Q: CommonJS vs ES Modules?
 
-**A:**
-| Feature | CommonJS | ES Modules |
-|---------|----------|------------|
-| Syntax | require/module.exports | import/export |
-| Loading | Synchronous | Asynchronous |
-| Top-level await | ❌ | ✅ |
-| Tree shaking | ❌ | ✅ |
+**Trả lời:**
+
+> | Feature         | CommonJS                   | ES Modules        |
+> | --------------- | -------------------------- | ----------------- |
+> | Syntax          | `require`/`module.exports` | `import`/`export` |
+> | Loading         | Synchronous                | Asynchronous      |
+> | Top-level await | ❌                         | ✅                |
+> | Tree shaking    | ❌                         | ✅                |
+>
+> ESM là standard mới, hỗ trợ static analysis và tree shaking.
 
 ---
 
 ### Q: Module caching hoạt động như thế nào?
 
-**A:** Node.js cache modules sau lần require đầu tiên. Các lần require sau trả về cùng instance.
+**Trả lời:**
 
-```javascript
-const a = require("./module");
-const b = require("./module");
-console.log(a === b); // true
-```
+> Node.js cache modules sau lần require đầu tiên. Các lần require sau trả về cùng instance.
+>
+> ```javascript
+> const a = require("./module");
+> const b = require("./module");
+> console.log(a === b); // true
+> ```
+>
+> Lợi ích: Performance, singleton pattern, shared state.
 
 ---
 
@@ -136,42 +137,47 @@ console.log(a === b); // true
 
 ### Q: JWT hoạt động như thế nào?
 
-**A:** JWT gồm 3 phần: Header.Payload.Signature
+**Trả lời:**
 
-1. Client gửi credentials
-2. Server verify và trả về JWT
-3. Client gửi JWT trong header cho các requests sau
-4. Server verify signature và extract payload
+> JWT gồm 3 phần: Header.Payload.Signature
+>
+> Flow:
+>
+> 1. User login với credentials
+> 2. Server verify và tạo JWT
+> 3. Client lưu JWT và gửi trong header mỗi request
+> 4. Server verify signature và extract payload
+>
+> JWT là stateless - server không cần lưu session.
 
 ---
 
 ### Q: Access Token vs Refresh Token?
 
-**A:**
+**Trả lời:**
 
-- **Access Token**: Short-lived (15m), dùng để access resources
-- **Refresh Token**: Long-lived (7d), dùng để lấy access token mới
-
-Refresh token rotation: Mỗi lần refresh, cả 2 tokens đều được tạo mới.
+> - **Access Token:** Short-lived (15m), dùng để access resources
+> - **Refresh Token:** Long-lived (7d), dùng để lấy access token mới
+>
+> Tại sao cần cả hai? Access token ngắn hạn giảm risk nếu bị leak. Refresh token cho phép user không cần login lại liên tục.
+>
+> Best practice: Token rotation - mỗi lần refresh, cả 2 tokens đều đổi mới.
 
 ---
 
 ### Q: Cách prevent SQL Injection?
 
-**A:**
+**Trả lời:**
 
-1. Parameterized queries
-2. ORM (auto-escaped)
-3. Input validation
-
-```javascript
-// ❌ Bad
-const query = `SELECT * FROM users WHERE id = '${id}'`;
-
-// ✅ Good
-const query = "SELECT * FROM users WHERE id = $1";
-await db.query(query, [id]);
-```
+> 1. **Parameterized queries:**
+>
+> ```javascript
+> const query = "SELECT * FROM users WHERE id = $1";
+> await db.query(query, [id]);
+> ```
+>
+> 2. **ORM:** Tự động escape
+> 3. **Input validation:** Validate và sanitize input
 
 ---
 
@@ -179,43 +185,49 @@ await db.query(query, [id]);
 
 ### Q: Làm sao scale Node.js app?
 
-**A:**
+**Trả lời:**
 
-1. **Clustering**: Tận dụng multi-core CPU
-2. **Load Balancing**: Nginx, HAProxy
-3. **Horizontal Scaling**: Multiple servers
-4. **Caching**: Redis
-5. **Database Optimization**: Indexing, connection pooling
+> 1. **Clustering:** Tận dụng multi-core CPU với PM2 cluster mode
+> 2. **Load Balancing:** Nginx phân phối requests
+> 3. **Horizontal Scaling:** Multiple servers
+> 4. **Caching:** Redis để giảm database load
+> 5. **Database:** Connection pooling, indexing, read replicas
 
 ---
 
 ### Q: N+1 Query Problem là gì?
 
-**A:** Khi fetch N records, mỗi record cần thêm 1 query để lấy related data = N+1 queries.
+**Trả lời:**
 
-```javascript
-// ❌ N+1
-const users = await User.find();
-for (const user of users) {
-  const posts = await Post.find({ authorId: user.id });
-}
-
-// ✅ Eager loading
-const users = await User.find().populate("posts");
-```
+> Khi fetch N records, mỗi record cần thêm 1 query để lấy related data = N+1 queries.
+>
+> ```javascript
+> // ❌ N+1: 101 queries cho 100 users
+> const users = await User.find();
+> for (const user of users) {
+>   const posts = await Post.find({ authorId: user.id });
+> }
+>
+> // ✅ Eager loading: 2 queries
+> const users = await User.find().populate("posts");
+> ```
 
 ---
 
 ### Q: Memory leak trong Node.js?
 
-**A:** Nguyên nhân phổ biến:
+**Trả lời:**
 
-1. Global variables
-2. Event listeners không remove
-3. Closures giữ references
-4. Timers không clear
-
-Detect: `process.memoryUsage()`, heap snapshots
+> Nguyên nhân phổ biến:
+>
+> 1. Global variables tích tụ data
+> 2. Event listeners không remove
+> 3. Closures giữ references
+> 4. Timers không clear
+>
+> Detect: `process.memoryUsage()`, heap snapshots
+>
+> Fix: Remove listeners, clear timers, avoid globals
 
 ---
 
@@ -223,29 +235,39 @@ Detect: `process.memoryUsage()`, heap snapshots
 
 ### Q: Connection Pooling là gì?
 
-**A:** Tái sử dụng database connections thay vì tạo mới cho mỗi request. Giảm overhead, tăng performance.
+**Trả lời:**
 
-```javascript
-const pool = new Pool({ max: 20 });
-```
+> Tái sử dụng database connections thay vì tạo mới cho mỗi request.
+>
+> Lợi ích:
+>
+> - Giảm overhead tạo connection
+> - Giới hạn số connections
+> - Tăng performance
+>
+> ```javascript
+> const pool = new Pool({ max: 20 });
+> ```
 
 ---
 
 ### Q: Transaction trong database?
 
-**A:** Nhóm các operations thành 1 unit. Tất cả thành công hoặc tất cả rollback (ACID).
+**Trả lời:**
 
-```javascript
-const session = await mongoose.startSession();
-session.startTransaction();
-try {
-  await User.create([...], { session });
-  await Order.create([...], { session });
-  await session.commitTransaction();
-} catch (error) {
-  await session.abortTransaction();
-}
-```
+> Transaction nhóm các operations thành 1 unit. Tất cả thành công hoặc tất cả rollback (ACID).
+>
+> ```javascript
+> const session = await mongoose.startSession();
+> session.startTransaction();
+> try {
+>   await User.create([...], { session });
+>   await Order.create([...], { session });
+>   await session.commitTransaction();
+> } catch (error) {
+>   await session.abortTransaction();
+> }
+> ```
 
 ---
 
@@ -253,22 +275,28 @@ try {
 
 ### Q: Unit Test vs Integration Test vs E2E Test?
 
-**A:**
+**Trả lời:**
 
-- **Unit**: Test individual functions/modules
-- **Integration**: Test multiple components together
-- **E2E**: Test entire application flow
+> - **Unit:** Test từng function riêng lẻ, nhanh, nhiều
+> - **Integration:** Test nhiều components kết hợp
+> - **E2E:** Test toàn bộ flow từ đầu đến cuối
+>
+> Testing Pyramid: Nhiều unit tests, ít E2E tests.
 
 ---
 
 ### Q: Mocking là gì?
 
-**A:** Thay thế real dependencies bằng fake implementations để isolate unit being tested.
+**Trả lời:**
 
-```javascript
-jest.mock("axios");
-axios.get.mockResolvedValue({ data: {} });
-```
+> Thay thế real dependencies bằng fake implementations để isolate unit đang test.
+>
+> ```javascript
+> jest.mock("axios");
+> axios.get.mockResolvedValue({ data: {} });
+> ```
+>
+> Lợi ích: Test nhanh, không phụ thuộc external services.
 
 ---
 
@@ -276,28 +304,37 @@ axios.get.mockResolvedValue({ data: {} });
 
 ### Q: Thiết kế REST API cho User CRUD?
 
-**A:**
+**Trả lời:**
 
 ```
-GET    /api/users      - List users
-GET    /api/users/:id  - Get user
+GET    /api/users      - List users (với pagination)
+GET    /api/users/:id  - Get user by ID
 POST   /api/users      - Create user
 PUT    /api/users/:id  - Update user
 DELETE /api/users/:id  - Delete user
+
+Status codes:
+- 200: Success
+- 201: Created
+- 400: Bad Request
+- 401: Unauthorized
+- 404: Not Found
+- 500: Server Error
 ```
 
 ---
 
 ### Q: Implement rate limiting?
 
-**A:**
+**Trả lời:**
 
 ```javascript
 const rateLimit = require("express-rate-limit");
 
 const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
+  windowMs: 15 * 60 * 1000, // 15 phút
   max: 100, // 100 requests per window
+  message: "Too many requests",
 });
 
 app.use("/api/", limiter);
@@ -307,15 +344,20 @@ app.use("/api/", limiter);
 
 ### Q: Graceful shutdown?
 
-**A:**
+**Trả lời:**
 
 ```javascript
 process.on("SIGTERM", async () => {
+  console.log("SIGTERM received");
+
   server.close(async () => {
     await db.end();
     await redis.quit();
     process.exit(0);
   });
+
+  // Force shutdown after timeout
+  setTimeout(() => process.exit(1), 30000);
 });
 ```
 
@@ -330,6 +372,11 @@ function promiseAll(promises) {
   return new Promise((resolve, reject) => {
     const results = [];
     let completed = 0;
+
+    if (promises.length === 0) {
+      resolve([]);
+      return;
+    }
 
     promises.forEach((promise, index) => {
       Promise.resolve(promise)
@@ -384,3 +431,19 @@ function throttle(fn, limit) {
 5. **Know your projects** - Chuẩn bị nói về projects đã làm
 6. **Practice coding** - LeetCode, HackerRank
 7. **Review fundamentals** - Event loop, async, closures
+
+---
+
+## 11. Tổng kết
+
+**Core:** Event Loop, Async, Modules
+
+**Security:** JWT, Password hashing, SQL Injection
+
+**Performance:** Clustering, Caching, N+1
+
+**Database:** Connection pooling, Transactions
+
+**Testing:** Unit, Integration, Mocking
+
+**DevOps:** Docker, CI/CD, Logging
