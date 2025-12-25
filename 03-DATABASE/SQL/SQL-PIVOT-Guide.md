@@ -1031,3 +1031,15 @@ PIVOT
 ) AS PivotTable
 ORDER BY AvgRating DESC;
 ```
+
+---
+
+## 8. Performance và Optimization
+
+### Performance Considerations
+
+```sql
+-- ═══════════════════════════════════════════════════════════
+-- 1. Index cho PIVOT performance
+-- ════════════════════════════════════════
+```
