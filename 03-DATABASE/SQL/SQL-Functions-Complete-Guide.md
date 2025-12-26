@@ -1,5 +1,39 @@
 # SQL Functions - Hướng dẫn đầy đủ
 
+## Mục lục
+
+- [Tổng quan các loại hàm trong SQL](#tổng-quan-các-loại-hàm-trong-sql)
+- [PHẦN 1: SCALAR FUNCTIONS](#phần-1-scalar-functions)
+  - [1.1 String Functions](#11-string-functions)
+  - [1.2 Numeric Functions](#12-numeric-functions)
+  - [1.3 Date/Time Functions](#13-datetime-functions)
+  - [1.4 Conversion Functions](#14-conversion-functions)
+- [PHẦN 2: AGGREGATE FUNCTIONS](#phần-2-aggregate-functions)
+  - [2.1 Các hàm Aggregate cơ bản](#21-các-hàm-aggregate-cơ-bản)
+  - [2.2 GROUP BY và HAVING](#22-group-by-và-having)
+  - [2.3 GROUPING SETS, ROLLUP, CUBE](#23-grouping-sets-rollup-cube)
+- [PHẦN 3: WINDOW FUNCTIONS](#phần-3-window-functions-analytic-functions)
+  - [3.1 Cú pháp Window Function](#31-cú-pháp-window-function)
+  - [3.2 Ranking Functions](#32-ranking-functions)
+  - [3.3 Aggregate Window Functions](#33-aggregate-window-functions)
+  - [3.4 Navigation Functions](#34-navigation-functions)
+  - [3.5 Ví dụ thực tế Window Functions](#35-ví-dụ-thực-tế-window-functions)
+- [PHẦN 4: CONDITIONAL FUNCTIONS](#phần-4-conditional-functions)
+  - [4.1 CASE Expression](#41-case-expression)
+  - [4.2 NULL Handling Functions](#42-null-handling-functions)
+  - [4.3 IIF / IF / DECODE](#43-iif--if--decode)
+- [PHẦN 5: JSON FUNCTIONS](#phần-5-json-functions-modern-sql)
+  - [5.1 SQL Server JSON](#51-sql-server-json)
+  - [5.2 MySQL JSON](#52-mysql-json)
+  - [5.3 PostgreSQL JSON](#53-postgresql-json)
+- [PHẦN 6: SYSTEM FUNCTIONS](#phần-6-system-functions)
+- [PHẦN 7: USER-DEFINED FUNCTIONS](#phần-7-user-defined-functions-udf)
+  - [7.1 Scalar Function](#71-scalar-function)
+  - [7.2 Table-Valued Function](#72-table-valued-function)
+- [TÓM TẮT](#tóm-tắt)
+
+---
+
 ## Tổng quan các loại hàm trong SQL
 
 ```
