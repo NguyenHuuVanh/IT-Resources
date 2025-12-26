@@ -555,3 +555,267 @@ SELECT
     revenue - LAG(revenue, 12) OVER (ORDER BY year, month) AS yoy_change
 FROM monthly_revenue;
 ```
+
+---
+
+# PHẦN 4: CONDITIONAL FUNCTIONS
+
+## 4.1 CASE Expression
+
+```sql
+-- Simple CASE
+SELECT
+    product_name,
+    category_id,
+    CASE category_id
+        WHEN 1 THEN 'Electronics'
+        WHEN 2 THEN 'Clothing'
+        WHEN 3 THEN 'Food'
+        ELSE 'Other'
+    END AS category_name
+FROM products;
+
+-- Searched CASE (linh hoạt hơn)
+SELECT
+    employee_name,
+    salary,
+    CASE
+        WHEN salary >= 100000 THEN 'Executive'
+        WHEN salary >= 70000 THEN 'Senior'
+        WHEN salary >= 40000 THEN 'Mid-level'
+        ELSE 'Junior'
+    END AS level
+FROM employees;
+
+-- CASE trong ORDER BY
+SELECT * FROM products
+ORDER BY
+    CASE WHEN stock = 0 THEN 1 ELSE 0 END,  -- Out of stock cuối
+    product_name;
+
+-- CASE trong Aggregate
+SELECT
+    COUNT(CASE WHEN status = 'completed' THEN 1 END) AS completed,
+    COUNT(CASE WHEN status = 'pending' THEN 1 END) AS pending,
+    COUNT(CASE WHEN status = 'cancelled' THEN 1 END) AS cancelled
+FROM orders;
+```
+
+## 4.2 NULL Handling Functions
+
+```sql
+-- COALESCE - Trả về giá trị không NULL đầu tiên
+SELECT COALESCE(phone, mobile, email, 'No contact') AS contact
+FROM customers;
+
+-- ISNULL (SQL Server) / IFNULL (MySQL)
+SELECT ISNULL(phone, 'N/A') FROM customers;      -- SQL Server
+SELECT IFNULL(phone, 'N/A') FROM customers;      -- MySQL
+
+-- NVL (Oracle)
+SELECT NVL(phone, 'N/A') FROM customers;         -- Oracle
+
+-- NULLIF - Trả về NULL nếu 2 giá trị bằng nhau
+SELECT NULLIF(quantity, 0);  -- Tránh chia cho 0
+SELECT total / NULLIF(quantity, 0) AS unit_price;
+
+-- IS NULL / IS NOT NULL
+SELECT * FROM customers WHERE phone IS NULL;
+SELECT * FROM customers WHERE phone IS NOT NULL;
+```
+
+## 4.3 IIF / IF / DECODE
+
+```sql
+-- IIF (SQL Server 2012+)
+SELECT
+    product_name,
+    stock,
+    IIF(stock > 0, 'In Stock', 'Out of Stock') AS availability
+FROM products;
+
+-- IF (MySQL)
+SELECT
+    product_name,
+    IF(stock > 0, 'In Stock', 'Out of Stock') AS availability
+FROM products;
+
+-- DECODE (Oracle)
+SELECT
+    product_name,
+    DECODE(category_id, 1, 'Electronics', 2, 'Clothing', 'Other') AS category
+FROM products;
+```
+
+---
+
+# PHẦN 5: JSON FUNCTIONS (Modern SQL)
+
+## 5.1 SQL Server JSON
+
+```sql
+-- Parse JSON
+SELECT JSON_VALUE('{"name":"John","age":30}', '$.name');  -- 'John'
+SELECT JSON_QUERY('{"items":[1,2,3]}', '$.items');        -- '[1,2,3]'
+
+-- Kiểm tra JSON hợp lệ
+SELECT ISJSON('{"name":"John"}');  -- 1
+
+-- Tạo JSON từ query
+SELECT
+    employee_id,
+    employee_name,
+    salary
+FROM employees
+FOR JSON PATH;
+
+-- Kết quả: [{"employee_id":1,"employee_name":"John","salary":50000},...]
+```
+
+## 5.2 MySQL JSON
+
+```sql
+-- Trích xuất giá trị
+SELECT JSON_EXTRACT('{"name":"John"}', '$.name');  -- "John"
+SELECT '{"name":"John"}'->>'$.name';               -- John (không có quotes)
+
+-- Tạo JSON
+SELECT JSON_OBJECT('name', 'John', 'age', 30);
+SELECT JSON_ARRAY(1, 2, 3);
+
+-- Kiểm tra
+SELECT JSON_VALID('{"name":"John"}');  -- 1
+SELECT JSON_CONTAINS('{"a":1,"b":2}', '1', '$.a');  -- 1
+```
+
+## 5.3 PostgreSQL JSON
+
+```sql
+-- Trích xuất
+SELECT '{"name":"John"}'::json->>'name';           -- John
+SELECT '{"a":{"b":"c"}}'::json->'a'->>'b';         -- c
+
+-- Tạo JSON
+SELECT json_build_object('name', 'John', 'age', 30);
+SELECT json_agg(row_to_json(t)) FROM my_table t;
+
+-- Array operations
+SELECT jsonb_array_elements('[1,2,3]'::jsonb);
+```
+
+---
+
+# PHẦN 6: SYSTEM FUNCTIONS
+
+```sql
+-- Thông tin database
+SELECT DB_NAME();                    -- SQL Server: Tên database hiện tại
+SELECT DATABASE();                   -- MySQL: Tên database hiện tại
+SELECT CURRENT_DATABASE();           -- PostgreSQL
+
+-- Thông tin user
+SELECT USER_NAME();                  -- SQL Server
+SELECT USER();                       -- MySQL
+SELECT CURRENT_USER;                 -- PostgreSQL
+
+-- Thông tin version
+SELECT @@VERSION;                    -- SQL Server/MySQL
+SELECT VERSION();                    -- PostgreSQL
+
+-- Identity/Auto-increment
+SELECT SCOPE_IDENTITY();             -- SQL Server: ID vừa insert
+SELECT LAST_INSERT_ID();             -- MySQL
+SELECT LASTVAL();                    -- PostgreSQL
+
+-- Row count
+SELECT @@ROWCOUNT;                   -- SQL Server: Số dòng affected
+SELECT ROW_COUNT();                  -- MySQL
+```
+
+---
+
+# PHẦN 7: USER-DEFINED FUNCTIONS (UDF)
+
+## 7.1 Scalar Function
+
+```sql
+-- SQL Server
+CREATE FUNCTION dbo.CalculateAge(@BirthDate DATE)
+RETURNS INT
+AS
+BEGIN
+    RETURN DATEDIFF(YEAR, @BirthDate, GETDATE()) -
+           CASE WHEN DATEADD(YEAR, DATEDIFF(YEAR, @BirthDate, GETDATE()), @BirthDate) > GETDATE()
+                THEN 1 ELSE 0 END;
+END;
+
+-- Sử dụng
+SELECT dbo.CalculateAge('1990-05-15') AS age;
+SELECT name, dbo.CalculateAge(birth_date) AS age FROM employees;
+```
+
+## 7.2 Table-Valued Function
+
+```sql
+-- Inline Table-Valued Function
+CREATE FUNCTION dbo.GetEmployeesByDept(@DeptId INT)
+RETURNS TABLE
+AS
+RETURN (
+    SELECT employee_id, employee_name, salary
+    FROM employees
+    WHERE department_id = @DeptId
+);
+
+-- Sử dụng
+SELECT * FROM dbo.GetEmployeesByDept(1);
+
+-- JOIN với function
+SELECT d.department_name, e.*
+FROM departments d
+CROSS APPLY dbo.GetEmployeesByDept(d.department_id) e;
+```
+
+---
+
+# TÓM TẮT
+
+## Bảng so sánh các loại Function
+
+| Loại      | Input      | Output         | GROUP BY  |
+| --------- | ---------- | -------------- | --------- |
+| Scalar    | 1 dòng     | 1 giá trị      | Không cần |
+| Aggregate | Nhiều dòng | 1 giá trị      | Cần       |
+| Window    | Nhiều dòng | 1 giá trị/dòng | Không cần |
+
+## Khi nào dùng gì?
+
+| Mục đích               | Function                     |
+| ---------------------- | ---------------------------- |
+| Xử lý text             | String functions             |
+| Tính toán số           | Numeric functions            |
+| Xử lý ngày             | Date functions               |
+| Tổng/Đếm/TB            | Aggregate + GROUP BY         |
+| Ranking                | ROW_NUMBER, RANK, DENSE_RANK |
+| So sánh dòng trước/sau | LAG, LEAD                    |
+| Running total          | SUM() OVER()                 |
+| Moving average         | AVG() OVER(ROWS...)          |
+| Top N mỗi nhóm         | ROW_NUMBER + PARTITION BY    |
+
+## Performance Tips
+
+1. **Tránh function trong WHERE** - không dùng được index
+
+```sql
+-- Chậm
+WHERE YEAR(order_date) = 2024
+
+-- Nhanh
+WHERE order_date >= '2024-01-01' AND order_date < '2025-01-01'
+```
+
+2. **Index cho Window Functions** - tạo index cho PARTITION BY và ORDER BY columns
+
+3. **Tránh Scalar UDF trong SELECT** - gọi nhiều lần, chậm
+
+4. **Dùng Inline TVF** thay vì Multi-statement TVF
