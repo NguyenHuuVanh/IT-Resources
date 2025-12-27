@@ -680,3 +680,455 @@ app.MapGet("/products/{id}", async Task<Results<Ok<Product>, NotFound>> (
         : TypedResults.NotFound();
 });
 ```
+
+---
+
+## API Versioning
+
+```csharp
+// Install: Asp.Versioning.Mvc
+
+builder.Services.AddApiVersioning(options =>
+{
+    options.DefaultApiVersion = new ApiVersion(1, 0);
+    options.AssumeDefaultVersionWhenUnspecified = true;
+    options.ReportApiVersions = true;
+    options.ApiVersionReader = ApiVersionReader.Combine(
+        new UrlSegmentApiVersionReader(),
+        new HeaderApiVersionReader("X-Api-Version"),
+        new QueryStringApiVersionReader("api-version")
+    );
+})
+.AddApiExplorer(options =>
+{
+    options.GroupNameFormat = "'v'VVV";
+    options.SubstituteApiVersionInUrl = true;
+});
+
+// URL versioning
+[ApiController]
+[Route("api/v{version:apiVersion}/[controller]")]
+[ApiVersion("1.0")]
+public class ProductsV1Controller : ControllerBase
+{
+    [HttpGet]
+    public IActionResult Get() => Ok("V1");
+}
+
+[ApiController]
+[Route("api/v{version:apiVersion}/[controller]")]
+[ApiVersion("2.0")]
+public class ProductsV2Controller : ControllerBase
+{
+    [HttpGet]
+    public IActionResult Get() => Ok("V2");
+}
+
+// Deprecate version
+[ApiVersion("1.0", Deprecated = true)]
+
+// Map to specific version
+[MapToApiVersion("2.0")]
+[HttpGet("new-endpoint")]
+public IActionResult NewEndpoint() => Ok();
+```
+
+---
+
+## Swagger/OpenAPI
+
+```csharp
+// Install: Swashbuckle.AspNetCore
+
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen(options =>
+{
+    options.SwaggerDoc("v1", new OpenApiInfo
+    {
+        Title = "My API",
+        Version = "v1",
+        Description = "API Description",
+        Contact = new OpenApiContact
+        {
+            Name = "Developer",
+            Email = "dev@example.com"
+        }
+    });
+
+    // JWT Authentication
+    options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+    {
+        Description = "JWT Authorization header using the Bearer scheme",
+        Name = "Authorization",
+        In = ParameterLocation.Header,
+        Type = SecuritySchemeType.ApiKey,
+        Scheme = "Bearer"
+    });
+
+    options.AddSecurityRequirement(new OpenApiSecurityRequirement
+    {
+        {
+            new OpenApiSecurityScheme
+            {
+                Reference = new OpenApiReference
+                {
+                    Type = ReferenceType.SecurityScheme,
+                    Id = "Bearer"
+                }
+            },
+            Array.Empty<string>()
+        }
+    });
+
+    // XML comments
+    var xmlFile = $"{Assembly.GetExecutingAssembly().GetName().Name}.xml";
+    var xmlPath = Path.Combine(AppContext.BaseDirectory, xmlFile);
+    options.IncludeXmlComments(xmlPath);
+});
+
+var app = builder.Build();
+
+if (app.Environment.IsDevelopment())
+{
+    app.UseSwagger();
+    app.UseSwaggerUI(options =>
+    {
+        options.SwaggerEndpoint("/swagger/v1/swagger.json", "My API V1");
+        options.RoutePrefix = string.Empty;  // Swagger at root
+    });
+}
+```
+
+### XML Documentation
+
+```csharp
+// Enable in .csproj
+// <GenerateDocumentationFile>true</GenerateDocumentationFile>
+
+/// <summary>
+/// Gets all products
+/// </summary>
+/// <returns>List of products</returns>
+/// <response code="200">Returns the list of products</response>
+[HttpGet]
+[ProducesResponseType(typeof(IEnumerable<Product>), StatusCodes.Status200OK)]
+public async Task<ActionResult<IEnumerable<Product>>> GetAll()
+{
+    return Ok(await _service.GetAllAsync());
+}
+
+/// <summary>
+/// Creates a new product
+/// </summary>
+/// <param name="dto">Product data</param>
+/// <returns>Created product</returns>
+/// <response code="201">Product created successfully</response>
+/// <response code="400">Invalid product data</response>
+[HttpPost]
+[ProducesResponseType(typeof(Product), StatusCodes.Status201Created)]
+[ProducesResponseType(StatusCodes.Status400BadRequest)]
+public async Task<ActionResult<Product>> Create([FromBody] CreateProductDto dto)
+{
+    var product = await _service.CreateAsync(dto);
+    return CreatedAtAction(nameof(GetById), new { id = product.Id }, product);
+}
+```
+
+---
+
+## Error Handling
+
+### Global Exception Handler
+
+```csharp
+// Exception Handler Middleware
+app.UseExceptionHandler(errorApp =>
+{
+    errorApp.Run(async context =>
+    {
+        context.Response.StatusCode = 500;
+        context.Response.ContentType = "application/json";
+
+        var error = context.Features.Get<IExceptionHandlerFeature>();
+        if (error != null)
+        {
+            var response = new
+            {
+                StatusCode = 500,
+                Message = "Internal Server Error",
+                Detail = error.Error.Message
+            };
+
+            await context.Response.WriteAsJsonAsync(response);
+        }
+    });
+});
+
+// Custom Exception Handler (.NET 8+)
+builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
+builder.Services.AddProblemDetails();
+
+app.UseExceptionHandler();
+
+public class GlobalExceptionHandler : IExceptionHandler
+{
+    private readonly ILogger<GlobalExceptionHandler> _logger;
+
+    public GlobalExceptionHandler(ILogger<GlobalExceptionHandler> logger)
+    {
+        _logger = logger;
+    }
+
+    public async ValueTask<bool> TryHandleAsync(
+        HttpContext httpContext,
+        Exception exception,
+        CancellationToken cancellationToken)
+    {
+        _logger.LogError(exception, "Exception occurred: {Message}", exception.Message);
+
+        var problemDetails = new ProblemDetails
+        {
+            Status = StatusCodes.Status500InternalServerError,
+            Title = "Server Error",
+            Detail = exception.Message
+        };
+
+        httpContext.Response.StatusCode = problemDetails.Status.Value;
+        await httpContext.Response.WriteAsJsonAsync(problemDetails, cancellationToken);
+
+        return true;
+    }
+}
+```
+
+### Problem Details
+
+```csharp
+// Standard error response format (RFC 7807)
+builder.Services.AddProblemDetails(options =>
+{
+    options.CustomizeProblemDetails = context =>
+    {
+        context.ProblemDetails.Instance = context.HttpContext.Request.Path;
+        context.ProblemDetails.Extensions["traceId"] = context.HttpContext.TraceIdentifier;
+    };
+});
+
+// Return Problem Details
+[HttpGet("{id}")]
+public IActionResult GetById(int id)
+{
+    var product = _service.GetById(id);
+
+    if (product == null)
+    {
+        return Problem(
+            title: "Product not found",
+            detail: $"Product with ID {id} was not found",
+            statusCode: StatusCodes.Status404NotFound
+        );
+    }
+
+    return Ok(product);
+}
+
+// Validation Problem Details
+return ValidationProblem(ModelState);
+```
+
+### Custom Exceptions
+
+```csharp
+public class NotFoundException : Exception
+{
+    public NotFoundException(string message) : base(message) { }
+}
+
+public class BadRequestException : Exception
+{
+    public BadRequestException(string message) : base(message) { }
+}
+
+// Handle in middleware
+public class ExceptionMiddleware
+{
+    private readonly RequestDelegate _next;
+
+    public async Task InvokeAsync(HttpContext context)
+    {
+        try
+        {
+            await _next(context);
+        }
+        catch (NotFoundException ex)
+        {
+            context.Response.StatusCode = 404;
+            await context.Response.WriteAsJsonAsync(new { error = ex.Message });
+        }
+        catch (BadRequestException ex)
+        {
+            context.Response.StatusCode = 400;
+            await context.Response.WriteAsJsonAsync(new { error = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            context.Response.StatusCode = 500;
+            await context.Response.WriteAsJsonAsync(new { error = "Internal server error" });
+        }
+    }
+}
+```
+
+---
+
+## CORS
+
+```csharp
+// Configure CORS
+builder.Services.AddCors(options =>
+{
+    // Allow all (development only!)
+    options.AddPolicy("AllowAll", policy =>
+    {
+        policy.AllowAnyOrigin()
+              .AllowAnyMethod()
+              .AllowAnyHeader();
+    });
+
+    // Specific origins
+    options.AddPolicy("AllowSpecific", policy =>
+    {
+        policy.WithOrigins("https://example.com", "https://app.example.com")
+              .WithMethods("GET", "POST", "PUT", "DELETE")
+              .WithHeaders("Content-Type", "Authorization")
+              .AllowCredentials();
+    });
+
+    // Default policy
+    options.AddDefaultPolicy(policy =>
+    {
+        policy.WithOrigins("https://example.com")
+              .AllowAnyMethod()
+              .AllowAnyHeader();
+    });
+});
+
+// Use CORS
+app.UseCors("AllowSpecific");
+// hoặc
+app.UseCors();  // Use default policy
+
+// Per-controller/action
+[EnableCors("AllowSpecific")]
+public class ProductsController : ControllerBase { }
+
+[DisableCors]
+[HttpGet]
+public IActionResult NoCors() { }
+```
+
+---
+
+## Response Caching
+
+```csharp
+builder.Services.AddResponseCaching();
+
+app.UseResponseCaching();
+
+// Cache response
+[HttpGet]
+[ResponseCache(Duration = 60)]  // Cache 60 seconds
+public IActionResult GetAll()
+{
+    return Ok(_service.GetAll());
+}
+
+// Cache với vary
+[ResponseCache(Duration = 60, VaryByQueryKeys = new[] { "category" })]
+public IActionResult GetByCategory(string category) { }
+
+// No cache
+[ResponseCache(NoStore = true)]
+public IActionResult GetSensitiveData() { }
+
+// Cache profile
+builder.Services.AddControllers(options =>
+{
+    options.CacheProfiles.Add("Default", new CacheProfile
+    {
+        Duration = 60,
+        Location = ResponseCacheLocation.Any
+    });
+});
+
+[ResponseCache(CacheProfileName = "Default")]
+public IActionResult Get() { }
+```
+
+---
+
+## Rate Limiting (.NET 7+)
+
+```csharp
+builder.Services.AddRateLimiter(options =>
+{
+    // Fixed window
+    options.AddFixedWindowLimiter("fixed", opt =>
+    {
+        opt.Window = TimeSpan.FromMinutes(1);
+        opt.PermitLimit = 100;
+        opt.QueueLimit = 10;
+    });
+
+    // Sliding window
+    options.AddSlidingWindowLimiter("sliding", opt =>
+    {
+        opt.Window = TimeSpan.FromMinutes(1);
+        opt.SegmentsPerWindow = 6;
+        opt.PermitLimit = 100;
+    });
+
+    // Token bucket
+    options.AddTokenBucketLimiter("token", opt =>
+    {
+        opt.TokenLimit = 100;
+        opt.ReplenishmentPeriod = TimeSpan.FromSeconds(10);
+        opt.TokensPerPeriod = 10;
+    });
+
+    // Rejection response
+    options.OnRejected = async (context, token) =>
+    {
+        context.HttpContext.Response.StatusCode = 429;
+        await context.HttpContext.Response.WriteAsync("Too many requests");
+    };
+});
+
+app.UseRateLimiter();
+
+// Apply to endpoint
+[EnableRateLimiting("fixed")]
+[HttpGet]
+public IActionResult Get() { }
+
+// Disable for specific endpoint
+[DisableRateLimiting]
+[HttpGet("health")]
+public IActionResult Health() { }
+```
+
+---
+
+## Tóm tắt Best Practices
+
+1. **Sử dụng [ApiController]** - Automatic validation, binding inference
+2. **Return ActionResult<T>** - Type-safe, better Swagger docs
+3. **Async/Await** - Tất cả I/O operations
+4. **Validation** - FluentValidation hoặc Data Annotations
+5. **Global Exception Handling** - Middleware hoặc IExceptionHandler
+6. **Logging** - Structured logging với Serilog
+7. **API Versioning** - URL hoặc Header versioning
+8. **CORS** - Configure properly cho production
+9. **Rate Limiting** - Protect API from abuse
+10. **Response Caching** - Cache static/semi-static data
