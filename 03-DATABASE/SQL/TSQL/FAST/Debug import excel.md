@@ -12,7 +12,7 @@ Nếu import từ file excel vào FBO mà gặp lỗi có xác định nhưng ch
 
 4.  Copy đoạn code sau vào giữa 2 đoạn code trên
 
-***alter table zzzimportexcel drop column stt***
+***alter table zzzimportexcel drop column stt;***
 ***insert into #table select \* from zzzimportexcel***
 
 1.  Tiến hành Execute Query đã tạo, có thể đặt các điểm bug (select, print…) để xác định vị trí gặp lỗi
