@@ -671,3 +671,11 @@ function Component() {
   return <div>Component</div>;
 }
 ```
+
+---
+
+## JSX
+
+### JSX là gì?
+
+**JSX (JavaScript XML)** là syntax extension cho JavaScript, cho phép viết HTML-like code trong Ja
