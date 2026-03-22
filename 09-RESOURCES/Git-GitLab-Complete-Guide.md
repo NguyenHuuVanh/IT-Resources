@@ -1,1502 +1,951 @@
-# Git & GitLab - Hướng Dẫn Toàn Diện
+# Git & GitLab — Hướng Dẫn Kiến Thức Toàn Diện
+
+> Tài liệu này **không chỉ liệt kê lệnh** — nó giải thích **tại sao**, **khi nào**, và **cách Git hoạt động** bên trong. Mục tiêu: đọc xong bạn **hiểu Git**, không chỉ **copy-paste lệnh**.
+
+---
 
 ## Mục Lục
 
-1. [Git Basics](#git-basics)
-2. [Git Branching](#git-branching)
-3. [Git Remote](#git-remote)
-4. [Git Advanced](#git-advanced)
-5. [GitLab](#gitlab)
-6. [Git Workflows](#git-workflows)
-7. [Best Practices](#best-practices)
-8. [Troubleshooting](#troubleshooting)
+1. [Git Là Gì — Hiểu Đúng Bản Chất](#1-git-là-gì--hiểu-đúng-bản-chất)
+2. [Kiến Trúc Bên Trong Git](#2-kiến-trúc-bên-trong-git)
+3. [Thiết Lập & Cấu Hình](#3-thiết-lập--cấu-hình)
+4. [Vòng Đời Của File Trong Git](#4-vòng-đời-của-file-trong-git)
+5. [Branching — Linh Hồn Của Git](#5-branching--linh-hồn-của-git)
+6. [Merge vs Rebase — Cuộc Tranh Luận Muôn Thuở](#6-merge-vs-rebase--cuộc-tranh-luận-muôn-thuở)
+7. [Làm Việc Với Remote](#7-làm-việc-với-remote)
+8. [Kỹ Thuật Nâng Cao](#8-kỹ-thuật-nâng-cao)
+9. [GitLab — Nền Tảng DevOps](#9-gitlab--nền-tảng-devops)
+10. [Git Workflows — Chọn Quy Trình Phù Hợp](#10-git-workflows--chọn-quy-trình-phù-hợp)
+11. [Best Practices](#11-best-practices)
+12. [Troubleshooting — Xử Lý Sự Cố](#12-troubleshooting--xử-lý-sự-cố)
+13. [Cheat Sheet Nhanh](#13-cheat-sheet-nhanh)
 
 ---
 
-# Git Basics
+# 1. Git Là Gì — Hiểu Đúng Bản Chất
 
-## Giới Thiệu
+## Vấn Đề Mà Git Giải Quyết
 
-**Git** là hệ thống quản lý phiên bản phân tán (Distributed Version Control System).
+Trước Git, lập trình viên quản lý code kiểu:
 
-### Tại Sao Cần Git?
-
-✅ **Version Control**: Theo dõi lịch sử thay đổi
-✅ **Collaboration**: Làm việc nhóm hiệu quả
-✅ **Backup**: Lưu trữ code an toàn
-✅ **Branching**: Phát triển tính năng độc lập
-✅ **Rollback**: Quay lại phiên bản cũ dễ dàng
-
----
-
-## Setup & Configuration
-
-### Install Git
-
-```bash
-# Windows
-# Download từ https://git-scm.com/download/win
-
-# macOS
-brew install git
-
-# Linux (Ubuntu/Debian)
-sudo apt-get install git
-
-# Linux (Fedora)
-sudo dnf install git
-
-# Kiểm tra version
-git --version
+```
+📁 project_v1.zip
+📁 project_v2_final.zip
+📁 project_v2_final_THẬT.zip
+📁 project_v2_final_THẬT_SỬA_LẦN_CUỐI.zip  😱
 ```
 
-### Initial Configuration
+**Hậu quả:**
+- Không biết ai sửa gì, khi nào
+- Merge code = copy-paste thủ công, dễ đè nhau
+- Muốn quay lại phiên bản cũ? Chúc may mắn
+
+## Git Giải Quyết Thế Nào?
+
+**Git là hệ thống quản lý phiên bản phân tán (DVCS).** Mỗi từ đều quan trọng:
+
+| Từ khóa | Ý nghĩa |
+|---------|---------|
+| **Quản lý phiên bản** | Lưu lại MỌI thay đổi, ai sửa, khi nào, vì sao |
+| **Phân tán** | Mỗi máy tính đều có **bản sao đầy đủ** của dự án + lịch sử — không phụ thuộc server trung tâm |
+
+> 💡 **Khác biệt cốt lõi:** SVN (tập trung) cần kết nối server để xem lịch sử. Git thì không — tất cả lịch sử nằm ngay trên máy bạn.
+
+## SVN vs Git — Hiểu Sự Khác Biệt
+
+```
+SVN (Tập trung):                    Git (Phân tán):
+                                     
+   ┌──────────┐                      ┌──────────┐
+   │  Server  │                      │  Remote  │
+   │ (nguồn   │                      │  (GitHub │
+   │  sự thật)│                      │  GitLab) │
+   └────┬─────┘                      └────┬─────┘
+        │                            ┌────┴─────┐
+   ┌────┼────┐                  ┌────┴──┐  ┌────┴──┐
+   │    │    │                  │ Clone │  │ Clone │
+   ▼    ▼    ▼                  │ ĐẦY   │  │ ĐẦY   │
+  Dev  Dev  Dev                 │ ĐỦ    │  │ ĐỦ    │
+  (chỉ (chỉ (chỉ               └───────┘  └───────┘
+  file  file file                 Dev A      Dev B
+  mới   mới  mới                (toàn bộ   (toàn bộ
+  nhất) nhất) nhất)              lịch sử)   lịch sử)
+```
+
+**Lợi ích thực tế của phân tán:**
+- **Làm việc offline:** Commit, tạo branch, xem log — tất cả không cần internet
+- **Tốc độ:** Mọi thao tác chạy local → nhanh cực kỳ
+- **An toàn:** Server sập? Mỗi dev đều có bản sao đầy đủ
+
+---
+
+# 2. Kiến Trúc Bên Trong Git
+
+## Ba Khu Vực — Mental Model Quan Trọng Nhất
+
+Đây là kiến thức **cốt lõi** — hiểu điều này thì mọi lệnh Git đều trở nên logic:
+
+```
+┌─────────────────┐    git add     ┌──────────────┐   git commit   ┌────────────────┐
+│  Working        │ ────────────►  │   Staging     │ ────────────►  │   Repository   │
+│  Directory      │                │   Area        │                │   (.git/)      │
+│                 │  ◄────────────  │   (Index)     │                │                │
+│  (Nơi bạn      │  git restore   │  (Nơi chuẩn   │                │  (Nơi lưu      │
+│   viết code)   │                │   bị commit)  │                │   lịch sử)     │
+└─────────────────┘                └──────────────┘                └────────────────┘
+```
+
+### Tại sao cần Staging Area?
+
+Nhiều người mới thắc mắc: "Sao không commit thẳng, thêm bước staging làm gì?"
+
+**Ví dụ thực tế:** Bạn đang fix bug, đồng thời phát hiện thêm 1 lỗi CSS. Bạn sửa cả 2. Nhưng muốn **commit riêng** từng cái để lịch sử rõ ràng:
 
 ```bash
-# Set user name
-git config --global user.name "Your Name"
+# Chỉ add file liên quan đến bug fix
+git add src/auth.js
+git commit -m "fix(auth): xử lý lỗi null khi login"
 
-# Set email
-git config --global user.email "your.email@example.com"
+# Sau đó add file CSS
+git add src/styles.css
+git commit -m "style(header): sửa lỗi tràn text"
+```
 
-# Set default editor
-git config --global core.editor "code --wait"  # VS Code
-git config --global core.editor "vim"          # Vim
+> 💡 Staging Area cho phép bạn **kiểm soát chính xác** cái gì vào commit nào — giống như bạn chọn món trước khi gọi, không phải gọi cả menu.
 
-# Set default branch name
+## Git Lưu Dữ Liệu Thế Nào? — Snapshot, Không Phải Delta
+
+**Hầu hết VCS cũ:** lưu **sự khác biệt (delta)** giữa các phiên bản.
+**Git:** chụp **ảnh toàn bộ (snapshot)** trạng thái dự án tại mỗi commit.
+
+```
+VCS cũ (Delta):               Git (Snapshot):
+
+v1: File A (original)          Commit 1: [A₁] [B₁] [C₁]
+v2: File A (diff +3 lines)     Commit 2: [A₁] [B₂] [C₁]  ← A₁, C₁ không đổi → Git dùng con trỏ
+v3: File A (diff -1 line)      Commit 3: [A₂] [B₂] [C₂]  ← toàn bộ thay đổi
+```
+
+> 💡 Nếu file không thay đổi, Git **không lưu lại** — chỉ tạo 1 con trỏ đến snapshot trước. Nên Git rất nhanh và tiết kiệm dung lượng.
+
+## Commit — Đơn Vị Cốt Lõi
+
+Mỗi commit là **1 snapshot** + metadata:
+
+```
+┌──────────────────────────────┐
+│        Commit abc123         │
+├──────────────────────────────┤
+│ Tree:     (snapshot files)   │ ← Con trỏ đến cây file
+│ Parent:   xyz789             │ ← Commit trước đó
+│ Author:   Anh <anh@mail.com>│
+│ Date:     2026-03-22         │
+│ Message:  "fix: login bug"   │
+│ SHA-1:    abc123def456...    │ ← Mã hash duy nhất
+└──────────────────────────────┘
+```
+
+**SHA-1 hash** được tính từ nội dung file + metadata → nếu thay đổi dù 1 bit, hash sẽ khác hoàn toàn. Đây là cách Git đảm bảo **tính toàn vẹn dữ liệu**.
+
+---
+
+# 3. Thiết Lập & Cấu Hình
+
+## Cài Đặt Git
+
+| Hệ điều hành | Cách cài |
+|--------------|----------|
+| **Windows** | Tải từ [git-scm.com](https://git-scm.com/download/win) hoặc `winget install Git.Git` |
+| **macOS** | `brew install git` (cần Homebrew) hoặc `xcode-select --install` |
+| **Linux** | `sudo apt install git` (Debian/Ubuntu) / `sudo dnf install git` (Fedora) |
+
+Kiểm tra: `git --version`
+
+## Cấu Hình — 3 Tầng Ưu Tiên
+
+Git có 3 cấp cấu hình, **cấp thấp ghi đè cấp cao**:
+
+```
+┌──────────────────────────────────────────┐
+│  --system   │ /etc/gitconfig             │  Toàn hệ thống (ít dùng)
+├──────────────────────────────────────────┤
+│  --global   │ ~/.gitconfig               │  Cho user hiện tại ← thường dùng nhất
+├──────────────────────────────────────────┤
+│  --local    │ .git/config (trong repo)   │  Cho riêng 1 dự án ← ghi đè global
+└──────────────────────────────────────────┘
+```
+
+**Cấu hình bắt buộc khi mới cài Git:**
+
+```bash
+git config --global user.name "Tên Của Bạn"
+git config --global user.email "email@example.com"
+```
+
+> ⚠️ **Hai dòng trên là BẮT BUỘC.** Git từ chối commit nếu thiếu. Email này sẽ hiển thị công khai trong lịch sử commit.
+
+**Cấu hình nên thiết lập:**
+
+```bash
+# Editor mặc định khi Git cần bạn nhập text (commit message, rebase...)
+git config --global core.editor "code --wait"   # VS Code
+
+# Tên branch mặc định khi git init
 git config --global init.defaultBranch main
 
-# Enable color
+# Bật màu cho output
 git config --global color.ui auto
 
-# View all config
-git config --list
-
-# View specific config
-git config user.name
-git config user.email
-
-# Config levels
-git config --global   # User level (~/.gitconfig)
-git config --local    # Repository level (.git/config)
-git config --system   # System level (/etc/gitconfig)
+# Xem toàn bộ config hiện tại
+git config --list --show-origin   # Show cả file nguồn
 ```
 
-### SSH Key Setup
+## SSH Key — Xác Thực Không Cần Mật Khẩu
+
+**Tại sao SSH?** Khi dùng HTTPS, mỗi lần push/pull bạn phải nhập username + password (hoặc token). SSH giải quyết bằng **cặp khóa mật mã**:
+
+```
+┌──────────┐     Mã hóa bằng       ┌──────────┐
+│Private Key│    Public Key         │  GitLab  │
+│(máy bạn, │ ◄──────────────────►  │  (lưu    │
+│ GIỮ BÍ MẬT)│                     │  Public  │
+└──────────┘                        │  Key)    │
+                                    └──────────┘
+```
 
 ```bash
-# Generate SSH key
-ssh-keygen -t ed25519 -C "your.email@example.com"
+# 1. Tạo cặp khóa (Ed25519 — thuật toán hiện đại, an toàn hơn RSA)
+ssh-keygen -t ed25519 -C "email@example.com"
+# Nhấn Enter 3 lần để dùng đường dẫn mặc định và không đặt passphrase
 
-# Start SSH agent
-eval "$(ssh-agent -s)"
-
-# Add SSH key
-ssh-add ~/.ssh/id_ed25519
-
-# Copy public key
+# 2. Copy public key
 cat ~/.ssh/id_ed25519.pub
-# Paste vào GitLab/GitHub Settings > SSH Keys
+# Copy nội dung → dán vào GitLab/GitHub > Settings > SSH Keys
 
-# Test connection
+# 3. Test kết nối
 ssh -T git@gitlab.com
 ssh -T git@github.com
 ```
 
+> 💡 **Private Key = chìa khóa vàng.** Tuyệt đối không chia sẻ file `id_ed25519` (không có `.pub`).
+
 ---
 
-## Repository Basics
+# 4. Vòng Đời Của File Trong Git
 
-### Initialize Repository
+## 4 Trạng Thái
+
+```
+    Untracked ───► Staged ───► Committed ───► Modified
+        │            │                           │
+        │         git add                    (sửa file)
+        │                                       │
+        └────────────────────────────────────────┘
+                     git add (lại)
+```
+
+| Trạng thái | Nghĩa là | Trong `git status` |
+|-----------|----------|-------------------|
+| **Untracked** | File mới, Git chưa biết | Đỏ, dưới "Untracked files" |
+| **Modified** | File đã được Git theo dõi, vừa bị sửa | Đỏ, dưới "Changes not staged" |
+| **Staged** | Đã đánh dấu sẵn sàng cho commit tiếp theo | Xanh, dưới "Changes to be committed" |
+| **Committed** | Đã an toàn trong lịch sử | KHÔNG hiện trong `git status` |
+
+## Các Thao Tác Cơ Bản Theo Workflow
+
+### Khởi tạo Repository
 
 ```bash
-# Create new repository
+# Tạo repo mới từ thư mục hiện tại
 git init
 
-# Create with specific branch name
-git init -b main
+# HOẶC clone repo có sẵn
+git clone https://gitlab.com/user/repo.git
 
-# Clone existing repository
-git clone https://gitlab.com/username/repo.git
-git clone git@gitlab.com:username/repo.git
-
-# Clone to specific folder
-git clone https://gitlab.com/username/repo.git my-folder
-
-# Clone specific branch
-git clone -b develop https://gitlab.com/username/repo.git
-
-# Shallow clone (only recent history)
-git clone --depth 1 https://gitlab.com/username/repo.git
+# Clone chỉ lịch sử gần nhất (nhanh hơn cho repo lớn)
+git clone --depth 1 https://gitlab.com/user/repo.git
 ```
 
-### Basic Commands
+### Workflow hàng ngày
 
 ```bash
-# Check status
+# 1. Xem trạng thái — LUÔN dùng trước mọi thao tác
 git status
 
-# Short status
-git status -s
+# 2. Xem cụ thể đã thay đổi GÌ
+git diff                    # Thay đổi chưa staged
+git diff --staged           # Thay đổi đã staged, sắp commit
 
-# Add files to staging
-git add file.txt                # Add specific file
-git add .                       # Add all files
-git add *.js                    # Add all .js files
-git add src/                    # Add entire folder
+# 3. Chọn file để commit
+git add file.txt            # Thêm 1 file cụ thể
+git add src/                # Thêm cả thư mục
+git add .                   # Thêm TẤT CẢ (cẩn thận!)
 
-# Remove from staging
-git reset file.txt              # Unstage file
-git reset                       # Unstage all
+# 4. Commit — lưu vào lịch sử
+git commit -m "feat(auth): thêm chức năng đăng nhập"
 
-# Commit changes
-git commit -m "Commit message"
-
-# Commit with description
-git commit -m "Title" -m "Description"
-
-# Add and commit in one command
-git commit -am "Message"        # Only for tracked files
-
-# Amend last commit
-git commit --amend -m "New message"
-
-# Amend without changing message
-git commit --amend --no-edit
-
-# View commit history
-git log
-
-# Compact log
-git log --oneline
-
-# Graph view
-git log --graph --oneline --all
-
-# Show specific number of commits
-git log -n 5
-
-# Show commits by author
-git log --author="John"
-
-# Show commits in date range
-git log --since="2024-01-01" --until="2024-12-31"
-
-# Show file changes
-git log --stat
-
-# Show detailed changes
-git log -p
-
-# Show specific file history
-git log -- file.txt
+# 5. Xem lịch sử
+git log --oneline --graph   # Dạng cây, ngắn gọn
 ```
 
----
+### Hủy thay đổi — Biết khi nào dùng gì
 
-## Working with Changes
+| Tình huống | Lệnh | Giải thích |
+|-----------|------|-----------|
+| Sửa file rồi muốn bỏ (chưa add) | `git restore file.txt` | Khôi phục về commit cuối |
+| Đã `git add` nhưng muốn unstage | `git restore --staged file.txt` | Đưa ngược về Working Directory |
+| Đã commit, muốn sửa message | `git commit --amend -m "message mới"` | Thay đổi commit cuối |
+| Đã commit, muốn uncommit (giữ code) | `git reset --soft HEAD~1` | Code vẫn ở Staging |
+| Đã commit, muốn xóa sạch | `git reset --hard HEAD~1` | ⚠️ MẤT CODE, không khôi phục |
 
-### View Changes
+### Stash — "Tạm Cất" Công Việc Dang Dở
 
-```bash
-# Show unstaged changes
-git diff
-
-# Show staged changes
-git diff --staged
-git diff --cached
-
-# Show changes in specific file
-git diff file.txt
-
-# Show changes between commits
-git diff commit1 commit2
-
-# Show changes between branches
-git diff main develop
-
-# Show only file names
-git diff --name-only
-
-# Show word-level diff
-git diff --word-diff
-```
-
-### Discard Changes
+**Tình huống:** Đang code feature, đột nhiên sếp bảo fix bug gấp. Chưa muốn commit code dở → **stash**.
 
 ```bash
-# Discard changes in working directory
-git checkout -- file.txt        # Old way
-git restore file.txt            # New way (Git 2.23+)
+git stash                       # Cất hết thay đổi vào "ngăn kéo"
+# ... chuyển branch, fix bug, commit ...
+git stash pop                   # Lấy lại code đã cất
 
-# Discard all changes
-git checkout -- .
-git restore .
-
-# Unstage file
-git reset HEAD file.txt         # Old way
-git restore --staged file.txt   # New way
-
-# Discard staged and unstaged changes
-git reset --hard HEAD
-
-# Discard last commit (keep changes)
-git reset --soft HEAD~1
-
-# Discard last commit (discard changes)
-git reset --hard HEAD~1
-```
-
-### Stash Changes
-
-```bash
-# Stash current changes
-git stash
-
-# Stash with message
-git stash save "Work in progress"
-
-# Stash including untracked files
-git stash -u
-
-# List stashes
+# Xem danh sách các stash
 git stash list
+# stash@{0}: WIP on feature: abc123 đang làm login
+# stash@{1}: WIP on main: def456 thử nghiệm CSS
 
-# Show stash content
-git stash show
-git stash show -p              # Show detailed changes
+# Lấy stash cụ thể (không xóa khỏi list)
+git stash apply stash@{1}
+```
 
-# Apply stash (keep in stash list)
-git stash apply
-git stash apply stash@{0}      # Apply specific stash
+> 💡 `stash pop` = lấy ra + xóa khỏi list. `stash apply` = lấy ra + giữ lại trong list.
 
-# Pop stash (remove from list)
-git stash pop
+---
 
-# Drop stash
-git stash drop stash@{0}
+# 5. Branching — Linh Hồn Của Git
 
-# Clear all stashes
-git stash clear
+## Branch Là Gì Thực Sự?
 
-# Create branch from stash
-git stash branch new-branch
+Nhiều người nghĩ branch = "copy cả dự án". **Sai.**
+
+> **Branch trong Git chỉ là 1 con trỏ (40 ký tự) trỏ đến 1 commit.** Tạo branch = tạo 1 file 41 byte. Cực kỳ nhẹ.
+
+```
+                     main
+                       ↓
+  A ← B ← C ← D ← E (commit)
+                  ↑
+               feature
+```
+
+Khi bạn tạo branch `feature` từ commit `D`, Git chỉ tạo 1 con trỏ mới trỏ đến `D`. Không copy gì cả.
+
+## HEAD — "Bạn Đang Ở Đâu?"
+
+`HEAD` là con trỏ đặc biệt cho biết **bạn đang đứng ở branch/commit nào**.
+
+```
+Trước checkout:          Sau git checkout feature:
+
+HEAD → main                HEAD → feature
+         ↓                          ↓
+  A ← B ← C                 A ← B ← C
+                                    ↑
+                                  main
+```
+
+## Thao Tác Với Branch
+
+```bash
+# Xem tất cả branch
+git branch              # Local
+git branch -a           # Local + remote
+
+# Tạo + chuyển sang branch mới (1 lệnh)
+git switch -c feature/login        # Cách mới (Git 2.23+)
+git checkout -b feature/login      # Cách cũ (vẫn hoạt động)
+
+# Chuyển branch
+git switch main
+
+# Xóa branch đã merge
+git branch -d feature/login
+
+# Xóa branch chưa merge (cẩn thận!)
+git branch -D feature/login
+
+# Xóa branch trên remote
+git push origin --delete feature/login
 ```
 
 ---
 
-# Git Branching
+# 6. Merge vs Rebase — Cuộc Tranh Luận Muôn Thuở
 
-## Branch Basics
+Đây là quyết định quan trọng nhất khi làm việc nhóm. Hiểu rõ để chọn đúng.
 
-```bash
-# List branches
-git branch                      # Local branches
-git branch -r                   # Remote branches
-git branch -a                   # All branches
+## Merge — Giữ Nguyên Lịch Sử
 
-# Create branch
-git branch feature-login
+```
+Trước merge:                    Sau git merge feature:
 
-# Create and switch to branch
-git checkout -b feature-login   # Old way
-git switch -c feature-login     # New way (Git 2.23+)
-
-# Switch branch
-git checkout main               # Old way
-git switch main                 # New way
-
-# Rename branch
-git branch -m old-name new-name
-
-# Rename current branch
-git branch -m new-name
-
-# Delete branch
-git branch -d feature-login     # Safe delete (merged only)
-git branch -D feature-login     # Force delete
-
-# Delete remote branch
-git push origin --delete feature-login
-git push origin :feature-login  # Alternative syntax
+main:    A ← B ← C             main:    A ← B ← C ← ← ← M (merge commit)
+                                                          ↗
+feature:      ← D ← E          feature:      ← D ← E ──┘
 ```
 
-## Merging
-
 ```bash
-# Merge branch into current branch
-git merge feature-login
-
-# Merge with commit message
-git merge feature-login -m "Merge feature-login"
-
-# Merge without fast-forward
-git merge --no-ff feature-login
-
-# Abort merge
-git merge --abort
-
-# Continue merge after resolving conflicts
-git merge --continue
-
-# Squash merge (combine all commits into one)
-git merge --squash feature-login
-git commit -m "Add login feature"
+git checkout main
+git merge feature
 ```
 
-## Rebasing
+**Ưu điểm:** Lịch sử **trung thực** — thấy rõ ai tạo branch, merge khi nào
+**Nhược điểm:** Lịch sử có thể rối với nhiều merge commit
+
+## Rebase — Viết Lại Lịch Sử Cho "Sạch"
+
+```
+Trước rebase:                   Sau git rebase main (trên feature):
+
+main:    A ← B ← C             main:    A ← B ← C
+                                                    ↖
+feature:      ← D ← E          feature:              ← D' ← E'
+                                        (D, E được "replay" lên đầu C)
+```
 
 ```bash
-# Rebase current branch onto main
+git checkout feature
 git rebase main
-
-# Interactive rebase (last 3 commits)
-git rebase -i HEAD~3
-
-# Continue rebase after resolving conflicts
-git rebase --continue
-
-# Skip current commit
-git rebase --skip
-
-# Abort rebase
-git rebase --abort
-
-# Rebase onto specific commit
-git rebase --onto main feature-a feature-b
 ```
 
-### Interactive Rebase Commands
+**Ưu điểm:** Lịch sử **thẳng, sạch đẹp** — dễ đọc
+**Nhược điểm:** **Viết lại lịch sử** → nguy hiểm nếu branch đã push
+
+## Quy Tắc Vàng
+
+> ⚠️ **KHÔNG BAO GIỜ rebase branch đã push và có người khác đang dùng.** Rebase tạo commit mới (D' ≠ D) → người khác sẽ gặp xung đột.
+
+| Tình huống | Dùng gì |
+|-----------|---------|
+| Merge feature vào main (đội nhóm) | `merge --no-ff` |
+| Cập nhật feature branch với main mới nhất (cá nhân) | `rebase` |
+| Branch đã push, có người khác code trên đó | `merge` |
+| Branch chỉ mình bạn dùng, chưa push | `rebase` |
+
+## Interactive Rebase — Dọn Dẹp Commit Trước Khi Merge
+
+**Tình huống:** Bạn có 5 commit lộn xộn. Muốn gom thành 2 commit sạch trước khi tạo MR.
 
 ```bash
-# In interactive rebase editor:
-pick    # Use commit
-reword  # Use commit, but edit message
-edit    # Use commit, but stop for amending
-squash  # Combine with previous commit
-fixup   # Like squash, but discard message
-drop    # Remove commit
-
-# Example:
-pick abc123 Add login feature
-squash def456 Fix login bug
-reword ghi789 Update documentation
-drop jkl012 Remove debug code
+git rebase -i HEAD~5     # Mở editor với 5 commit gần nhất
 ```
 
-## Cherry-Pick
+Editor sẽ hiện:
+
+```
+pick abc123 WIP: bắt đầu login
+pick def456 fix typo
+pick ghi789 WIP: tiếp tục login
+pick jkl012 fix lỗi nhỏ
+pick mno345 hoàn thành login
+```
+
+Bạn sửa thành:
+
+```
+pick abc123 WIP: bắt đầu login
+squash def456 fix typo              ← gom vào commit trên
+squash ghi789 WIP: tiếp tục login   ← gom vào commit trên
+squash jkl012 fix lỗi nhỏ           ← gom vào commit trên
+reword mno345 hoàn thành login      ← đổi message
+```
+
+| Lệnh | Tác dụng |
+|------|---------|
+| `pick` | Giữ nguyên commit |
+| `squash` | Gom vào commit phía trên, giữ cả 2 message |
+| `fixup` | Gom vào commit phía trên, **bỏ** message |
+| `reword` | Giữ commit nhưng đổi message |
+| `drop` | Xóa commit |
+
+## Cherry-Pick — "Hái" Commit Cụ Thể
+
+**Tình huống:** Branch `feature` có 10 commit, nhưng bạn chỉ cần **1 commit** cụ thể đưa sang `main`.
 
 ```bash
-# Apply specific commit to current branch
-git cherry-pick abc123
-
-# Cherry-pick multiple commits
-git cherry-pick abc123 def456
-
-# Cherry-pick without committing
-git cherry-pick -n abc123
-
-# Continue after resolving conflicts
-git cherry-pick --continue
-
-# Abort cherry-pick
-git cherry-pick --abort
+git checkout main
+git cherry-pick abc123     # Chỉ copy commit abc123 sang main
 ```
 
 ---
 
-# Git Remote
+# 7. Làm Việc Với Remote
 
-## Remote Basics
+## Hiểu Remote — "Bản Sao Trên Server"
 
-```bash
-# List remotes
-git remote
-git remote -v                   # Show URLs
-
-# Add remote
-git remote add origin https://gitlab.com/username/repo.git
-
-# Change remote URL
-git remote set-url origin https://gitlab.com/username/new-repo.git
-
-# Remove remote
-git remote remove origin
-
-# Rename remote
-git remote rename origin upstream
-
-# Show remote info
-git remote show origin
+```
+┌─────────────┐                    ┌─────────────┐
+│  Máy bạn    │    push ──────►    │   Remote    │
+│  (local)    │    ◄────── pull    │  (GitLab/   │
+│             │    ◄────── fetch   │   GitHub)   │
+└─────────────┘                    └─────────────┘
 ```
 
-## Fetch & Pull
+### Fetch vs Pull — Sự Khác Biệt Quan Trọng
+
+| | `git fetch` | `git pull` |
+|--|-----------|-----------|
+| **Làm gì** | Tải về thay đổi từ remote | Tải về **+ tự động merge** |
+| **An toàn** | ✅ Không thay đổi code của bạn | ⚠️ Có thể gây conflict |
+| **Khi nào dùng** | Muốn xem trước có gì mới | Chắc chắn muốn cập nhật |
 
 ```bash
-# Fetch from remote (don't merge)
+# Fetch — an toàn, chỉ download
 git fetch origin
+git log main..origin/main   # Xem những commit mới chưa có ở local
+git merge origin/main       # Quyết định merge thủ công
 
-# Fetch all remotes
-git fetch --all
-
-# Fetch and prune deleted branches
-git fetch --prune
-
-# Pull (fetch + merge)
-git pull origin main
-
-# Pull with rebase
-git pull --rebase origin main
-
-# Pull all branches
-git pull --all
-
-# Set upstream branch
-git branch --set-upstream-to=origin/main main
-
-# Pull with upstream
-git pull
+# Pull — nhanh, nhưng cần cẩn thận
+git pull origin main         # = fetch + merge
+git pull --rebase origin main  # = fetch + rebase (lịch sử sạch hơn)
 ```
 
-## Push
+### Push — Đẩy Code Lên Remote
 
 ```bash
-# Push to remote
-git push origin main
+# Push lần đầu (thiết lập tracking)
+git push -u origin main     # -u = --set-upstream
 
-# Push all branches
-git push --all origin
+# Push các lần sau
+git push                    # Git nhớ remote nhờ -u ở trên
 
-# Push tags
-git push --tags
-
-# Push and set upstream
-git push -u origin main
-
-# Force push (dangerous!)
-git push --force origin main
-
-# Force push with lease (safer)
-git push --force-with-lease origin main
-
-# Delete remote branch
-git push origin --delete feature-login
-
-# Push specific tag
-git push origin v1.0.0
+# Force push — KHI NÀO?
+git push --force-with-lease  # An toàn hơn --force: kiểm tra không ai push trước
 ```
+
+> ⚠️ **`--force` = ghi đè lịch sử remote.** Chỉ dùng trên branch **riêng** của bạn, KHÔNG BAO GIỜ dùng trên `main`.
 
 ---
 
-# Git Advanced
+# 8. Kỹ Thuật Nâng Cao
 
-## Tags
+## Tags — Đánh Dấu Phiên Bản
+
+Tag khác branch ở chỗ: **tag là con trỏ CỐ ĐỊNH** — luôn trỏ vào 1 commit, không di chuyển.
 
 ```bash
-# List tags
-git tag
+# Tạo annotated tag (khuyến khích — có metadata)
+git tag -a v1.0.0 -m "Phiên bản 1.0.0 — ra mắt sản phẩm"
 
-# Create lightweight tag
-git tag v1.0.0
-
-# Create annotated tag
-git tag -a v1.0.0 -m "Version 1.0.0"
-
-# Tag specific commit
-git tag v1.0.0 abc123
-
-# Show tag info
+# Xem thông tin tag
 git show v1.0.0
 
-# Delete tag
-git tag -d v1.0.0
-
-# Delete remote tag
-git push origin --delete v1.0.0
-
-# Push tag to remote
-git push origin v1.0.0
-
-# Push all tags
-git push --tags
-
-# Checkout tag
-git checkout v1.0.0
+# Push tag lên remote
+git push origin v1.0.0      # 1 tag cụ thể
+git push --tags              # Tất cả tags
 ```
 
-## Submodules
+## Reflog — "Mạng Lưới An Toàn"
+
+`reflog` ghi lại **MỌI thao tác** bạn làm trên HEAD — kể cả reset --hard.
 
 ```bash
-# Add submodule
-git submodule add https://gitlab.com/username/lib.git libs/mylib
-
-# Initialize submodules
-git submodule init
-
-# Update submodules
-git submodule update
-
-# Clone with submodules
-git clone --recursive https://gitlab.com/username/repo.git
-
-# Update all submodules
-git submodule update --remote
-
-# Remove submodule
-git submodule deinit libs/mylib
-git rm libs/mylib
-rm -rf .git/modules/libs/mylib
-```
-
-## Git Hooks
-
-```bash
-# Hooks location
-.git/hooks/
-
-# Common hooks:
-pre-commit          # Before commit
-prepare-commit-msg  # Before commit message editor
-commit-msg          # After commit message
-post-commit         # After commit
-pre-push            # Before push
-post-merge          # After merge
-
-# Example pre-commit hook
-#!/bin/sh
-npm run lint
-npm run test
-
-# Make hook executable
-chmod +x .git/hooks/pre-commit
-```
-
-## Reflog
-
-```bash
-# Show reflog
 git reflog
+# abc123 HEAD@{0}: reset: moving to HEAD~1
+# def456 HEAD@{1}: commit: feat: thêm login
+# ghi789 HEAD@{2}: checkout: moving from main to feature
 
-# Show reflog for specific branch
-git reflog show main
-
-# Recover deleted branch
-git reflog
-git checkout -b recovered-branch abc123
-
-# Recover deleted commits
-git reflog
-git cherry-pick abc123
+# Khôi phục commit đã "xóa" bằng reset --hard
+git checkout -b recovered def456
 ```
 
-## Bisect (Find Bug)
+> 💡 `reflog` là "tấm lưới" cứu bạn khỏi hầu hết sai lầm. Dữ liệu reflog giữ **90 ngày** mặc định.
+
+## Git Bisect — Tìm Bug Bằng Nhị Phân
+
+**Tình huống:** có bug nhưng không biết commit nào gây ra, từ 100 commit gần đây.
 
 ```bash
-# Start bisect
 git bisect start
+git bisect bad                    # Commit hiện tại có bug
+git bisect good abc123            # Commit cũ không có bug
 
-# Mark current commit as bad
-git bisect bad
+# Git tự checkout commit giữa → bạn test
+git bisect good    # hoặc bad, tùy kết quả test
 
-# Mark old commit as good
-git bisect good abc123
+# Lặp lại cho đến khi Git tìm ra commit gây bug
+# Chỉ cần ~7 bước cho 100 commits (log₂100 ≈ 7)
 
-# Git will checkout middle commit
-# Test and mark as good or bad
-git bisect good   # or git bisect bad
-
-# Continue until bug is found
-
-# Reset bisect
-git bisect reset
+git bisect reset   # Quay lại trạng thái ban đầu
 ```
 
-## Worktree
+## Git Hooks — Tự Động Hóa
 
+Hooks là **script tự động chạy** khi bạn thực hiện thao tác Git.
+
+| Hook | Chạy khi | Dùng để |
+|------|---------|---------|
+| `pre-commit` | Trước mỗi commit | Chạy lint, format code |
+| `commit-msg` | Sau khi nhập message | Kiểm tra format message |
+| `pre-push` | Trước khi push | Chạy test |
+| `post-merge` | Sau khi merge | Cài dependency mới |
+
+**Ví dụ `pre-commit` hook:**
 ```bash
-# Create worktree
-git worktree add ../feature-branch feature-branch
-
-# List worktrees
-git worktree list
-
-# Remove worktree
-git worktree remove ../feature-branch
-
-# Prune worktrees
-git worktree prune
+#!/bin/sh
+# File: .git/hooks/pre-commit
+npm run lint
+if [ $? -ne 0 ]; then
+  echo "❌ Lint failed. Commit bị chặn."
+  exit 1
+fi
 ```
 
----
-
-# GitLab
-
-## GitLab Basics
-
-### GitLab vs GitHub
-
-| Feature                | GitLab             | GitHub                 |
-| ---------------------- | ------------------ | ---------------------- |
-| **CI/CD**              | Built-in           | GitHub Actions         |
-| **Self-hosted**        | ✅ Free            | ❌ Enterprise only     |
-| **Issue Tracking**     | Advanced           | Basic                  |
-| **Wiki**               | ✅                 | ✅                     |
-| **Container Registry** | ✅ Built-in        | ✅                     |
-| **Security Scanning**  | ✅                 | ✅ (Advanced Security) |
-| **Price**              | Free tier generous | Free tier limited      |
+> 💡 Thực tế nên dùng **Husky** (Node.js) để quản lý hooks — dễ chia sẻ hooks với cả team.
 
 ---
 
-## GitLab CI/CD
+# 9. GitLab — Nền Tảng DevOps
 
-### .gitlab-ci.yml Basics
+## GitLab vs GitHub — Chọn Cái Nào?
+
+| Tiêu chí | GitLab | GitHub |
+|---------|--------|--------|
+| **CI/CD** | Tích hợp sẵn, mạnh mẽ | GitHub Actions (mới hơn, đang bắt kịp) |
+| **Self-hosted** | ✅ Miễn phí (Community Edition) | ❌ Chỉ Enterprise |
+| **DevOps tích hợp** | Đầy đủ: CI/CD, Registry, Monitoring, Security | Cần ghép thêm tools |
+| **Cộng đồng open-source** | Nhỏ hơn | Rất lớn, nhiều repo public |
+| **Tốt nhất cho** | Doanh nghiệp, self-hosted, DevOps pipeline | Open-source, cá nhân, cộng đồng |
+
+> 💡 **Quy tắc ngón tay cái:** Cần tự host + DevOps tích hợp → GitLab. Cần cộng đồng lớn + open-source → GitHub. Nhiều công ty dùng cả hai.
+
+## GitLab CI/CD — Hiểu Pipeline
+
+Pipeline = **chuỗi công việc tự động** chạy khi bạn push code.
+
+```
+Push code → Build → Test → Deploy
+               │       │       │
+            (biên dịch) (unit, e2e)  (staging/prod)
+```
+
+### Cấu trúc file `.gitlab-ci.yml`
 
 ```yaml
-# Basic pipeline
+# Định nghĩa các giai đoạn (chạy tuần tự)
 stages:
   - build
   - test
   - deploy
 
-build-job:
+# Mỗi job thuộc 1 stage
+build-app:
   stage: build
   script:
-    - echo "Building the app..."
     - npm install
     - npm run build
-  artifacts:
+  artifacts:             # File truyền sang job sau
     paths:
       - dist/
+    expire_in: 1 hour   # Tự xóa sau 1 giờ
 
-test-job:
+test-unit:
   stage: test
   script:
-    - echo "Running tests..."
     - npm run test
+  dependencies:
+    - build-app          # Lấy artifacts từ job build-app
 
-deploy-job:
+deploy-production:
   stage: deploy
   script:
-    - echo "Deploying..."
     - npm run deploy
   only:
-    - main
-```
-
-### Advanced Pipeline
-
-```yaml
-# Variables
-variables:
-  NODE_VERSION: "18"
-  DOCKER_IMAGE: "node:${NODE_VERSION}"
-
-# Cache
-cache:
-  key: ${CI_COMMIT_REF_SLUG}
-  paths:
-    - node_modules/
-    - .npm/
-
-# Before script (runs before every job)
-before_script:
-  - npm ci --cache .npm --prefer-offline
-
-# Stages
-stages:
-  - install
-  - lint
-  - test
-  - build
-  - deploy
-
-# Install dependencies
-install:
-  stage: install
-  script:
-    - npm ci
-  artifacts:
-    paths:
-      - node_modules/
-    expire_in: 1 hour
-
-# Lint
-lint:
-  stage: lint
-  script:
-    - npm run lint
-  dependencies:
-    - install
-
-# Unit tests
-test:unit:
-  stage: test
-  script:
-    - npm run test:unit
-  coverage: '/Statements\s*:\s*(\d+\.\d+)%/'
-  artifacts:
-    reports:
-      coverage_report:
-        coverage_format: cobertura
-        path: coverage/cobertura-coverage.xml
-
-# E2E tests
-test:e2e:
-  stage: test
-  script:
-    - npm run test:e2e
-  only:
-    - main
-    - merge_requests
-
-# Build
-build:
-  stage: build
-  script:
-    - npm run build
-  artifacts:
-    paths:
-      - dist/
-    expire_in: 1 week
-  only:
-    - main
-    - tags
-
-# Deploy to staging
-deploy:staging:
-  stage: deploy
-  script:
-    - echo "Deploying to staging..."
-    - npm run deploy:staging
-  environment:
-    name: staging
-    url: https://staging.example.com
-  only:
-    - develop
-
-# Deploy to production
-deploy:production:
-  stage: deploy
-  script:
-    - echo "Deploying to production..."
-    - npm run deploy:production
+    - main               # Chỉ deploy khi push vào main
+  when: manual           # Yêu cầu bấm nút thủ công
   environment:
     name: production
     url: https://example.com
-  only:
-    - main
-  when: manual # Require manual trigger
 ```
 
-### Docker Build & Push
+### Khái Niệm Quan Trọng
 
-```yaml
-# Build and push Docker image
-docker-build:
-  stage: build
-  image: docker:latest
-  services:
-    - docker:dind
-  variables:
-    DOCKER_DRIVER: overlay2
-    DOCKER_TLS_CERTDIR: "/certs"
-  before_script:
-    - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
-  script:
-    - docker build -t $CI_REGISTRY_IMAGE:$CI_COMMIT_SHA .
-    - docker tag $CI_REGISTRY_IMAGE:$CI_COMMIT_SHA $CI_REGISTRY_IMAGE:latest
-    - docker push $CI_REGISTRY_IMAGE:$CI_COMMIT_SHA
-    - docker push $CI_REGISTRY_IMAGE:latest
-  only:
-    - main
+| Thuật ngữ | Ý nghĩa |
+|----------|---------|
+| **Stage** | Giai đoạn (build, test, deploy). Jobs cùng stage chạy **song song** |
+| **Job** | Một tác vụ cụ thể. Chạy trong Docker container riêng |
+| **Artifacts** | File/thư mục truyền giữa các jobs |
+| **Cache** | Lưu dependencies (node_modules) giữa các lần chạy → nhanh hơn |
+| **Runner** | Máy thực thi pipeline (GitLab cung cấp shared runner miễn phí) |
+| **Environment** | Môi trường deploy (staging, production) — có URL và lịch sử deploy |
+
+### Cache vs Artifacts — Hay Nhầm Lẫn
+
+| | Cache | Artifacts |
+|--|-------|-----------|
+| **Mục đích** | Tăng tốc (không cần npm install lại) | Truyền kết quả giữa các jobs |
+| **Chia sẻ** | Giữa các **lần chạy pipeline** | Giữa các **jobs trong cùng pipeline** |
+| **Ví dụ** | `node_modules/`, `.npm/` | `dist/`, `coverage/` |
+
+## Merge Request (MR) — Code Review Đúng Cách
+
+MR (GitLab) = PR/Pull Request (GitHub) — là **cách chính thức** để đưa code vào main.
+
+**Quy trình chuẩn:**
+
+```
+1. Tạo branch → 2. Code & commit → 3. Push → 4. Tạo MR
+→ 5. Code review → 6. CI/CD pass → 7. Approve → 8. Merge
 ```
 
-### Multi-Environment Deployment
-
-```yaml
-# Deploy to multiple environments
-.deploy_template: &deploy_template
-  stage: deploy
-  script:
-    - echo "Deploying to $ENVIRONMENT..."
-    - ssh $SSH_USER@$SSH_HOST "cd /var/www/$ENVIRONMENT && git pull && npm install && pm2 restart app"
-
-deploy:dev:
-  <<: *deploy_template
-  variables:
-    ENVIRONMENT: "dev"
-    SSH_HOST: "dev.example.com"
-  environment:
-    name: development
-    url: https://dev.example.com
-  only:
-    - develop
-
-deploy:staging:
-  <<: *deploy_template
-  variables:
-    ENVIRONMENT: "staging"
-    SSH_HOST: "staging.example.com"
-  environment:
-    name: staging
-    url: https://staging.example.com
-  only:
-    - main
-
-deploy:production:
-  <<: *deploy_template
-  variables:
-    ENVIRONMENT: "production"
-    SSH_HOST: "example.com"
-  environment:
-    name: production
-    url: https://example.com
-  only:
-    - tags
-  when: manual
-```
-
----
-
-## GitLab Merge Requests
-
-### Create Merge Request
-
-```bash
-# Push branch
-git push -u origin feature-login
-
-# Create MR via CLI (using glab)
-glab mr create --title "Add login feature" --description "Implements user login"
-
-# Or via GitLab UI
-# Go to repository → Merge Requests → New Merge Request
-```
-
-### MR Best Practices
+**MR Template nên có:**
 
 ```markdown
-## Merge Request Template
+## Mô tả thay đổi
+Giải thích ngắn gọn: thay đổi gì, tại sao.
 
-### Description
-
-Brief description of changes
-
-### Type of Change
-
+## Loại thay đổi
 - [ ] Bug fix
-- [ ] New feature
+- [ ] Tính năng mới
 - [ ] Breaking change
-- [ ] Documentation update
+- [ ] Cập nhật documentation
 
-### Checklist
+## Checklist
+- [ ] Code follow convention
+- [ ] Tự review code rồi
+- [ ] Đã viết test
+- [ ] Document đã cập nhật
 
-- [ ] Code follows style guidelines
-- [ ] Self-review completed
-- [ ] Comments added for complex code
-- [ ] Documentation updated
-- [ ] Tests added/updated
-- [ ] All tests passing
-- [ ] No new warnings
-
-### Screenshots (if applicable)
-
-Add screenshots here
-
-### Related Issues
-
-Closes #123
-```
-
-### MR Commands
-
-```bash
-# Approve MR
-glab mr approve 123
-
-# Merge MR
-glab mr merge 123
-
-# Close MR
-glab mr close 123
-
-# Reopen MR
-glab mr reopen 123
-
-# View MR
-glab mr view 123
-
-# List MRs
-glab mr list
-
-# Checkout MR locally
-glab mr checkout 123
+## Ảnh chụp màn hình (nếu có UI thay đổi)
 ```
 
 ---
 
-## GitLab Issues
+# 10. Git Workflows — Chọn Quy Trình Phù Hợp
 
-### Create Issue
+## So Sánh 3 Workflow Phổ Biến
 
-```bash
-# Via CLI
-glab issue create --title "Fix login bug" --description "Login fails on mobile"
+### Git Flow — Cho Dự Án Release-based
 
-# With labels
-glab issue create --title "Add feature" --label "enhancement,high-priority"
-
-# Assign to user
-glab issue create --title "Bug fix" --assignee @username
+```
+main ─────────────────●────────────────●──── (production)
+                     ↑ merge          ↑ merge
+release/1.0 ────────●                 │
+                   ↑ merge            │
+develop ──●──●──●──●──●──●──●──●──●──●──── (integration)
+          ↑  ↑           ↑
+feature/A ●  │       feature/C ●
+          feature/B ●
 ```
 
-### Issue Commands
+| Branch | Vai trò | Tồn tại |
+|--------|---------|---------|
+| `main` | Production — luôn ổn định | Vĩnh viễn |
+| `develop` | Tích hợp feature | Vĩnh viễn |
+| `feature/*` | Phát triển tính năng | Tạm thời |
+| `release/*` | Chuẩn bị release | Tạm thời |
+| `hotfix/*` | Fix bug khẩn cấp trên production | Tạm thời |
 
-```bash
-# List issues
-glab issue list
+**Phù hợp:** Dự án lớn, release theo đợt (v1.0, v2.0), cần kiểm soát chặt.
 
-# View issue
-glab issue view 123
+### GitHub Flow — Đơn Giản & Hiệu Quả
 
-# Close issue
-glab issue close 123
-
-# Reopen issue
-glab issue reopen 123
-
-# Update issue
-glab issue update 123 --title "New title"
-
-# Add comment
-glab issue note 123 "This is a comment"
 ```
+main ──●──●──●──●──●──●──── (luôn deploy được)
+       ↑     ↑     ↑
+    feature feature feature
+    (MR)    (MR)    (MR)
+```
+
+**Quy tắc duy nhất:** `main` luôn deployable. Mọi thay đổi đều qua MR.
+
+**Phù hợp:** Ứng dụng web, CI/CD tự động, deploy liên tục (SaaS).
+
+### Trunk-Based Development — Tốc Độ Tối Đa
+
+```
+main ──●──●──●──●──●──●──── (deploy nhiều lần/ngày)
+       ↑  ↑  ↑
+      (branch ngắn, < 1 ngày, merge ngay)
+```
+
+**Phù hợp:** Team giỏi, CI/CD mạnh, cần ship nhanh. Google & Facebook dùng cách này.
+
+### Cách Chọn?
+
+| Tiêu chí | Git Flow | GitHub Flow | Trunk-Based |
+|---------|---------|------------|------------|
+| **Độ phức tạp** | Cao | Thấp | Rất thấp |
+| **Tốc độ ship** | Chậm | Nhanh | Rất nhanh |
+| **Team size** | Lớn | Mọi size | Mọi size (cần giỏi) |
+| **Release cycle** | Theo đợt | Liên tục | Nhiều lần/ngày |
+| **Yêu cầu CI/CD** | Không bắt buộc | Nên có | **Bắt buộc** |
 
 ---
 
-# Git Workflows
+# 11. Best Practices
 
-## Git Flow
+## Viết Commit Message — Nghệ Thuật Bị Đánh Giá Thấp
 
-```
-main (production)
-  ↓
-develop (integration)
-  ↓
-feature/* (new features)
-release/* (release preparation)
-hotfix/* (urgent fixes)
-```
-
-### Git Flow Commands
-
-```bash
-# Start feature
-git checkout develop
-git checkout -b feature/login
-
-# Finish feature
-git checkout develop
-git merge --no-ff feature/login
-git branch -d feature/login
-git push origin develop
-
-# Start release
-git checkout develop
-git checkout -b release/1.0.0
-
-# Finish release
-git checkout main
-git merge --no-ff release/1.0.0
-git tag -a v1.0.0 -m "Version 1.0.0"
-git checkout develop
-git merge --no-ff release/1.0.0
-git branch -d release/1.0.0
-
-# Hotfix
-git checkout main
-git checkout -b hotfix/critical-bug
-# Fix bug
-git checkout main
-git merge --no-ff hotfix/critical-bug
-git tag -a v1.0.1 -m "Hotfix 1.0.1"
-git checkout develop
-git merge --no-ff hotfix/critical-bug
-git branch -d hotfix/critical-bug
-```
-
----
-
-## GitHub Flow (Simpler)
+### Quy Ước Conventional Commits
 
 ```
-main (production)
-  ↓
-feature/* (all changes)
-```
-
-### GitHub Flow Process
-
-```bash
-# 1. Create branch
-git checkout -b feature/new-feature
-
-# 2. Make changes and commit
-git add .
-git commit -m "Add new feature"
-
-# 3. Push and create PR
-git push -u origin feature/new-feature
-
-# 4. Review and merge
-# Merge via GitHub/GitLab UI
-
-# 5. Delete branch
-git branch -d feature/new-feature
-git push origin --delete feature/new-feature
-```
-
----
-
-## Trunk-Based Development
-
-```
-main (always deployable)
-  ↓
-short-lived feature branches (< 1 day)
-```
-
-### Trunk-Based Process
-
-```bash
-# 1. Pull latest
-git checkout main
-git pull origin main
-
-# 2. Create short-lived branch
-git checkout -b feature/quick-fix
-
-# 3. Make small changes
-git add .
-git commit -m "Quick fix"
-
-# 4. Push and merge quickly
-git push -u origin feature/quick-fix
-# Create MR and merge immediately
-
-# 5. Delete branch
-git branch -d feature/quick-fix
-```
-
----
-
-# Best Practices
-
-## Commit Messages
-
-### Conventional Commits
-
-```bash
-# Format
 <type>(<scope>): <subject>
 
-<body>
+[body - giải thích WHY, không phải WHAT]
 
-<footer>
-
-# Types
-feat:     # New feature
-fix:      # Bug fix
-docs:     # Documentation
-style:    # Formatting
-refactor: # Code restructuring
-test:     # Tests
-chore:    # Maintenance
-
-# Examples
-feat(auth): add login functionality
-
-fix(api): resolve null pointer exception
-
-docs(readme): update installation instructions
-
-style(css): format button styles
-
-refactor(utils): simplify date formatting
-
-test(auth): add login tests
-
-chore(deps): update dependencies
+[footer - breaking changes, issue references]
 ```
 
-### Good Commit Messages
+| Type | Khi nào | Ví dụ |
+|------|---------|-------|
+| `feat` | Thêm tính năng | `feat(cart): thêm chức năng mã giảm giá` |
+| `fix` | Sửa bug | `fix(auth): xử lý lỗi null khi token hết hạn` |
+| `refactor` | Tái cấu trúc (không thêm/sửa gì) | `refactor(api): tách service layer` |
+| `docs` | Chỉ thay đổi Documentation | `docs(readme): thêm hướng dẫn cài đặt` |
+| `style` | Format, dấu chấm phẩy, whitespace | `style(global): chạy prettier` |
+| `test` | Thêm/sửa test | `test(auth): thêm test cho login flow` |
+| `chore` | Cập nhật tooling, config | `chore(deps): cập nhật React lên 19.1` |
+| `perf` | Cải thiện hiệu năng | `perf(query): thêm index cho bảng users` |
 
-```bash
-# ✅ GOOD
-git commit -m "feat(auth): implement JWT authentication"
-git commit -m "fix(api): handle null response from user endpoint"
-git commit -m "docs(readme): add setup instructions"
-
-# ❌ BAD
+**❌ BAD:**
+```
 git commit -m "fix"
 git commit -m "update"
-git commit -m "changes"
-git commit -m "asdfasdf"
+git commit -m "sửa lỗi"
+git commit -m "wip"
+```
+
+**✅ GOOD:**
+```
+git commit -m "fix(payment): prevent double charge when user clicks submit twice"
+git commit -m "feat(search): add fuzzy matching for Vietnamese diacritics"
+```
+
+> 💡 Commit message tốt = **chạy `git log --oneline` vẫn hiểu dự án đang phát triển gì** mà không cần đọc code.
+
+## .gitignore — Biết Cái Gì Không Nên Commit
+
+**Nguyên tắc:** Không commit file **sinh ra tự động** hoặc **chứa thông tin bí mật**.
+
+| Loại file | Ví dụ | Lý do |
+|----------|-------|-------|
+| **Dependencies** | `node_modules/`, `venv/` | Tái tạo bằng `npm install` |
+| **Build output** | `dist/`, `build/`, `*.pyc` | Tái tạo bằng build command |
+| **Secrets** | `.env`, `*.key`, `credentials.json` | ⚠️ **BẢO MẬT** |
+| **OS files** | `.DS_Store`, `Thumbs.db` | Không liên quan đến code |
+| **IDE** | `.vscode/settings.json`, `.idea/` | Config cá nhân |
+
+## Đặt Tên Branch
+
+```
+<type>/<ticket-id>-<mô-tả-ngắn>
+
+Ví dụ:
+feature/AUTH-42-google-oauth
+bugfix/PAY-156-duplicate-charge
+hotfix/SEC-001-sql-injection
 ```
 
 ---
 
-## .gitignore
+# 12. Troubleshooting — Xử Lý Sự Cố
 
-```bash
-# Node.js
-node_modules/
-npm-debug.log
-yarn-error.log
-.env
-.env.local
+## Merge Conflict — Hiểu Và Xử Lý
 
-# Build
-dist/
-build/
-*.log
+**Conflict xảy ra khi:** 2 người sửa **cùng dòng** trong cùng file.
 
-# IDE
-.vscode/
-.idea/
-*.swp
-*.swo
-*~
-
-# OS
-.DS_Store
-Thumbs.db
-
-# Testing
-coverage/
-.nyc_output/
-
-# Temporary
-*.tmp
-*.temp
-.cache/
 ```
-
-### Global .gitignore
-
-```bash
-# Create global gitignore
-git config --global core.excludesfile ~/.gitignore_global
-
-# Add to ~/.gitignore_global
-.DS_Store
-.vscode/
-.idea/
-*.swp
-```
-
----
-
-## Git Aliases
-
-```bash
-# Add aliases to ~/.gitconfig
-git config --global alias.co checkout
-git config --global alias.br branch
-git config --global alias.ci commit
-git config --global alias.st status
-git config --global alias.unstage 'reset HEAD --'
-git config --global alias.last 'log -1 HEAD'
-git config --global alias.visual 'log --graph --oneline --all'
-git config --global alias.amend 'commit --amend --no-edit'
-
-# Usage
-git co main          # git checkout main
-git br               # git branch
-git ci -m "message"  # git commit -m "message"
-git st               # git status
-git unstage file.txt # git reset HEAD file.txt
-git last             # git log -1 HEAD
-git visual           # git log --graph --oneline --all
-git amend            # git commit --amend --no-edit
-```
-
----
-
-## Branch Naming
-
-```bash
-# Convention
-<type>/<description>
-
-# Types
-feature/    # New features
-bugfix/     # Bug fixes
-hotfix/     # Urgent fixes
-release/    # Release branches
-docs/       # Documentation
-refactor/   # Code refactoring
-test/       # Tests
-
-# Examples
-feature/user-authentication
-bugfix/login-error
-hotfix/critical-security-patch
-release/v1.2.0
-docs/api-documentation
-refactor/database-queries
-test/integration-tests
-```
-
----
-
-# Troubleshooting
-
-## Common Issues
-
-### Merge Conflicts
-
-```bash
-# When merge conflict occurs
-git status  # See conflicted files
-
-# Open conflicted file, you'll see:
-<<<<<<< HEAD
-Your changes
+<<<<<<< HEAD (thay đổi của bạn)
+const color = "blue";
 =======
-Their changes
->>>>>>> branch-name
-
-# Resolve conflicts manually, then:
-git add resolved-file.txt
-git commit -m "Resolve merge conflict"
-
-# Or abort merge
-git merge --abort
+const color = "red";
+>>>>>>> feature/new-theme (thay đổi của họ)
 ```
 
-### Undo Commits
+**Cách xử lý:**
+1. Mở file conflict → chọn giữ code nào (hoặc kết hợp cả 2)
+2. Xóa các dòng `<<<<`, `====`, `>>>>`
+3. `git add file.txt` → `git commit`
+
+**Cách TRÁNH conflict:**
+- Pull thường xuyên (`git pull --rebase`)
+- Branch nhỏ, merge nhanh
+- Giao tiếp với team: "Mình đang sửa file X"
+
+## Khôi Phục Sau Sai Lầm
+
+| Sai lầm | Cách khôi phục |
+|---------|---------------|
+| Commit nhầm branch | `git cherry-pick <hash>` sang branch đúng, rồi `reset` branch sai |
+| Reset --hard mất code | `git reflog` → tìm hash → `git checkout -b recovery <hash>` |
+| Push code sai lên remote | `git revert <hash>` (tạo commit đảo ngược, an toàn) |
+| Xóa branch nhầm | `git reflog` → tìm commit cuối của branch → tạo lại |
+| File quá lớn trong lịch sử | `git filter-repo` hoặc BFG Repo-Cleaner |
+
+> 💡 **`git revert` vs `git reset`:** `revert` tạo commit mới undo, AN TOÀN cho branch đã push. `reset` xóa commit, CHỈ dùng cho branch chưa push.
+
+## Đồng Bộ Fork
 
 ```bash
-# Undo last commit (keep changes)
-git reset --soft HEAD~1
+# Thêm upstream (repo gốc)
+git remote add upstream https://github.com/original/repo.git
 
-# Undo last commit (discard changes)
-git reset --hard HEAD~1
-
-# Undo last commit (keep changes in working directory)
-git reset --mixed HEAD~1
-
-# Undo multiple commits
-git reset --soft HEAD~3
-
-# Undo pushed commit (create new commit)
-git revert HEAD
-git push origin main
-```
-
-### Fix Wrong Branch
-
-```bash
-# Committed to wrong branch
-git log  # Copy commit hash
-
-# Switch to correct branch
-git checkout correct-branch
-git cherry-pick abc123
-
-# Go back and remove from wrong branch
-git checkout wrong-branch
-git reset --hard HEAD~1
-```
-
-### Recover Deleted Branch
-
-```bash
-# Find deleted branch commit
-git reflog
-
-# Recreate branch
-git checkout -b recovered-branch abc123
-```
-
-### Clean Repository
-
-```bash
-# Remove untracked files (dry run)
-git clean -n
-
-# Remove untracked files
-git clean -f
-
-# Remove untracked files and directories
-git clean -fd
-
-# Remove ignored files too
-git clean -fdx
-```
-
-### Large File Issues
-
-```bash
-# Remove large file from history
-git filter-branch --tree-filter 'rm -f large-file.zip' HEAD
-
-# Or use BFG Repo-Cleaner (faster)
-bfg --delete-files large-file.zip
-git reflog expire --expire=now --all
-git gc --prune=now --aggressive
-
-# Use Git LFS for large files
-git lfs install
-git lfs track "*.psd"
-git add .gitattributes
-git add file.psd
-git commit -m "Add large file with LFS"
-```
-
-### Sync Fork
-
-```bash
-# Add upstream remote
-git remote add upstream https://gitlab.com/original/repo.git
-
-# Fetch upstream
+# Cập nhật fork
 git fetch upstream
-
-# Merge upstream changes
 git checkout main
 git merge upstream/main
-
-# Push to your fork
 git push origin main
 ```
 
 ---
 
-## Git Performance
+# 13. Cheat Sheet Nhanh
 
-### Speed Up Git
+## Lệnh Hàng Ngày
 
 ```bash
-# Enable parallel index preload
-git config --global core.preloadindex true
+git status                          # Xem trạng thái
+git add .                           # Stage tất cả
+git commit -m "type: message"      # Commit
+git push                           # Đẩy lên remote
+git pull --rebase                  # Cập nhật từ remote
+git switch -c feature/name         # Tạo branch mới
+git log --oneline --graph -20      # Xem lịch sử 20 commit
+```
 
-# Enable file system cache
-git config --global core.fscache true
+## Lệnh "Cứu Mạng"
 
-# Increase pack window
-git config --global pack.windowMemory 256m
-git config --global pack.packSizeLimit 256m
+```bash
+git stash                          # Tạm cất code
+git reflog                         # Xem mọi thao tác đã làm
+git reset --soft HEAD~1            # Uncommit (giữ code)
+git restore file.txt               # Bỏ thay đổi chưa stage
+git revert HEAD                    # Undo commit đã push
+git bisect start                   # Tìm commit gây bug
+```
 
-# Garbage collection
-git gc --aggressive --prune=now
+## Git Aliases — Tiết Kiệm Thời Gian
 
-# Optimize repository
-git repack -a -d --depth=250 --window=250
+```bash
+git config --global alias.st status
+git config --global alias.co checkout
+git config --global alias.br branch
+git config --global alias.lg "log --oneline --graph --all -20"
+git config --global alias.last "log -1 HEAD"
+git config --global alias.undo "reset --soft HEAD~1"
 ```
 
 ---
 
-## Useful Commands
+## Tài Nguyên Tham Khảo
 
-```bash
-# Show who changed each line
-git blame file.txt
-
-# Show file at specific commit
-git show abc123:file.txt
-
-# Search in commits
-git log --all --grep="search term"
-
-# Search in code
-git grep "search term"
-
-# Show branches containing commit
-git branch --contains abc123
-
-# Show commits not in main
-git log main..feature-branch
-
-# Show commits in main but not in feature
-git log feature-branch..main
-
-# Count commits
-git rev-list --count HEAD
-
-# Show commit stats
-git shortlog -sn
-
-# Show repository size
-git count-objects -vH
-
-# Archive repository
-git archive --format=zip --output=repo.zip HEAD
-```
+| Loại | Link | Mô tả |
+|------|------|-------|
+| 📖 Sách | [Pro Git Book](https://git-scm.com/book/en/v2) | Miễn phí, đầy đủ nhất |
+| 📖 Docs | [Git Documentation](https://git-scm.com/doc) | Tài liệu chính thức |
+| 🎮 Trực quan | [Learn Git Branching](https://learngitbranching.js.org/) | Game học Git branching |
+| 📖 Docs | [GitLab CI/CD](https://docs.gitlab.com/ee/ci/) | Hướng dẫn CI/CD |
+| 📋 Quy ước | [Conventional Commits](https://www.conventionalcommits.org/) | Chuẩn commit message |
 
 ---
 
-## Git Cheat Sheet
-
-### Daily Commands
-
-```bash
-# Start work
-git pull origin main
-git checkout -b feature/new-feature
-
-# During work
-git status
-git add .
-git commit -m "feat: add new feature"
-git push -u origin feature/new-feature
-
-# Update branch
-git checkout main
-git pull origin main
-git checkout feature/new-feature
-git rebase main
-
-# Finish work
-git checkout main
-git merge feature/new-feature
-git push origin main
-git branch -d feature/new-feature
-```
-
-### Emergency Commands
-
-```bash
-# Undo last commit
-git reset --soft HEAD~1
-
-# Discard all changes
-git reset --hard HEAD
-
-# Stash everything
-git stash -u
-
-# Recover deleted branch
-git reflog
-git checkout -b recovered abc123
-
-# Fix merge conflict
-git merge --abort
-git rebase --abort
-```
-
----
-
-## Resources
-
-- [Git Documentation](https://git-scm.com/doc)
-- [GitLab Documentation](https://docs.gitlab.com/)
-- [Pro Git Book](https://git-scm.com/book/en/v2)
-- [Git Cheat Sheet](https://education.github.com/git-cheat-sheet-education.pdf)
-- [Conventional Commits](https://www.conventionalcommits.org/)
-- [Git Flow](https://nvie.com/posts/a-successful-git-branching-model/)
-
----
-
-**Lưu Ý**: Luôn backup code quan trọng và cẩn thận với các lệnh `--force`, `--hard`, và `filter-branch`!
+> **Ghi nhớ cuối cùng:** Git là công cụ mạnh mẽ — nhưng sức mạnh đi kèm trách nhiệm. **Luôn cẩn thận** với `--force`, `--hard`, và `filter-branch`. Và khi hoang mang, `git reflog` là bạn thân nhất của bạn. 🚀
