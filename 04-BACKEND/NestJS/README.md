@@ -11,5 +11,6 @@ Tổng hợp kiến thức & ghi chú ôn phỏng vấn về **NestJS** — fram
 | 03 | [Providers](./03-Providers.md) | Provider, Dependency Injection, scope, custom provider & câu hỏi phỏng vấn |
 | 04 | [Modules](./04-Modules.md) | Module, imports/exports, root module, Global & Dynamic Module & câu hỏi phỏng vấn |
 | 05 | [Middleware](./05-Middleware.md) | Middleware, class & functional, đăng ký route, global middleware & câu hỏi phỏng vấn |
+| 06 | [Pipes & Validation](./06-Pipes-Validation.md) | Pipe, class-validator, class-transformer, ValidationPipe + DTO & câu hỏi phỏng vấn |
 
-> Các chủ đề sẽ được bổ sung dần: Guards, Interceptors, Pipes, Exception Filters...
+> Các chủ đề sẽ được bổ sung dần: Guards, Interceptors, Exception Filters...
