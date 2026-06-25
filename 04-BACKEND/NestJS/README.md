@@ -13,5 +13,6 @@ Tổng hợp kiến thức & ghi chú ôn phỏng vấn về **NestJS** — fram
 | 05 | [Middleware](./05-Middleware.md) | Middleware, class & functional, đăng ký route, global middleware & câu hỏi phỏng vấn |
 | 06 | [Pipes & Validation](./06-Pipes-Validation.md) | Pipe, class-validator, class-transformer, ValidationPipe + DTO & câu hỏi phỏng vấn |
 | 07 | [Vòng đời Request](./07-Request-Lifecycle.md) | Thứ tự Middleware → Guards → Interceptors → Pipes → Handler → Filters, đa cấp & câu hỏi phỏng vấn |
+| 08 | [DTO](./08-DTO.md) | DTO, cách tạo, whitelist vs Expose/Exclude, PartialType & câu hỏi phỏng vấn |
 
 > Các chủ đề sẽ được bổ sung dần: Guards, Interceptors, Exception Filters...
