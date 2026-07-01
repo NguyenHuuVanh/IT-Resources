@@ -18,6 +18,22 @@ Provider thường dùng để chứa **logic nghiệp vụ (business logic)**, 
 
 > 💡 **Mẹo:** Nên tuân theo nguyên tắc **SOLID** khi thiết kế provider (gợi ý chính thức từ NestJS).
 
+> **🧱 Instance là gì?**
+>
+> **Instance (thể hiện)** là một **object thực tế** được tạo ra từ một **class**. Nói đơn giản: **class là bản thiết kế, instance là sản phẩm thật** đúc ra từ bản thiết kế đó (giống *khuôn làm bánh* → *từng chiếc bánh*).
+>
+> ```typescript
+> class Nha {
+>   constructor(public mauSon: string) {}
+> }
+> const nha1 = new Nha('xanh'); // 👈 instance thứ 1
+> const nha2 = new Nha('đỏ');   // 👈 instance thứ 2 (dữ liệu riêng)
+> ```
+>
+> Từ **một class** có thể tạo **nhiều instance**, mỗi cái là một object độc lập trong bộ nhớ. Trong lập trình thường, ta tạo instance bằng từ khóa `new`.
+>
+> **🔑 Liên hệ NestJS:** Bạn **không tự `new`** — IoC Container **tự tạo instance** của provider rồi tiêm vào. Phần **Scope** (mục 8) chính là quyết định *tạo bao nhiêu instance*: `DEFAULT` = 1 instance dùng chung, `REQUEST` = 1 instance/request, `TRANSIENT` = 1 instance mỗi lần inject.
+
 ## 2. Dependency Injection & IoC
 
 NestJS dùng **IoC Container** (Inversion of Control) để quản lý vòng đời của các provider:
