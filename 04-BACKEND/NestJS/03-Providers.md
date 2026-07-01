@@ -121,110 +121,129 @@ IoC Container của NestJS rất mạnh. Mọi provider đều có **2 phần ch
 - **`provide` (token)**: Có thể là **class**, **string**, hoặc **Symbol**.
 - **`use___`**: Quyết định NestJS sẽ **tạo ra cái gì** và **bằng cách nào**.
 
-NestJS hỗ trợ đúng **4 cách** định nghĩa custom provider. Dưới đây là phần **khái niệm cốt lõi** của từng loại:
+NestJS hỗ trợ đúng **4 cách** định nghĩa custom provider. Dưới đây là phần **khái niệm chi tiết**, được viết dành cho việc trả lời phỏng vấn:
 
 ### 5.1. `useClass` — Cung cấp instance từ một Class
 
-**Khái niệm cốt lõi:**
+**Khái niệm chi tiết (dành cho phỏng vấn):**
 
-`useClass` bảo NestJS: **"Khi ai đó yêu cầu token này, hãy tạo một instance mới (`new`) của class mà tôi chỉ định."**
+`useClass` là cách định nghĩa provider **mặc định** trong NestJS. Khi bạn khai báo một class vào mảng `providers`, NestJS sẽ hiểu rằng: **"Bất cứ khi nào ai đó yêu cầu token này, hãy tạo một instance mới của class được chỉ định bằng cách gọi `new ClassName()` và quản lý vòng đời của nó."**
 
-Đây là cách **mặc định và phổ biến nhất**. Khi bạn viết đơn giản `providers: [MyService]`, NestJS hiểu ngầm là `{ provide: MyService, useClass: MyService }`.
+Về bản chất, `useClass` cho phép bạn **tách biệt giữa token (định danh) và implementation (lớp thực thi)**. Điều này cực kỳ mạnh mẽ vì:
 
-Nói cách khác, NestJS sẽ **tự động khởi tạo** class bạn cung cấp và quản lý vòng đời của nó.
+- Bạn có thể dễ dàng thay đổi implementation mà không cần sửa code ở nơi inject.
+- Hỗ trợ tốt nguyên tắc **Dependency Inversion** (SOLID) khi kết hợp với abstract class hoặc interface.
+- NestJS sẽ tự động thực hiện **constructor injection** cho class được chỉ định (nếu class đó có dependencies).
 
-**Cú pháp:**
+**Đặc điểm quan trọng:**
+- Mỗi lần token được inject → NestJS tạo **instance mới** (trừ khi scope là Singleton - mặc định).
+- Phù hợp khi bạn muốn kiểm soát **class nào** sẽ được khởi tạo cho một token.
+
+**Ví dụ phỏng vấn hay dùng:**
 ```ts
-// Cách ngắn gọn (khuyến khích)
-providers: [CatsService]
+export abstract class ConfigService { abstract get(key: string): any; }
 
-// Cách đầy đủ (tường minh hơn)
-providers: [
-  { provide: CatsService, useClass: CatsService }
-]
+@Injectable() class DevConfigService extends ConfigService { ... }
+@Injectable() class ProdConfigService extends ConfigService { ... }
+
+// Trong module
+{ provide: ConfigService, useClass: process.env.NODE_ENV === 'prod' ? ProdConfigService : DevConfigService }
 ```
 
-**Điểm nổi bật:**
-- NestJS tự động gọi `new ClassName()` và inject các dependency bên trong class đó.
-- Cho phép bạn **thay đổi implementation** mà không ảnh hưởng đến nơi sử dụng (rất mạnh khi dùng với abstract class/interface).
+> **Câu trả lời mẫu khi phỏng vấn:**
+> "`useClass` cho phép tôi map một token sang một class cụ thể. NestJS sẽ tự động khởi tạo class đó và inject các dependency bên trong. Đây là cách linh hoạt để thay đổi implementation theo môi trường hoặc khi testing."
 
 ### 5.2. `useValue` — Cung cấp giá trị tĩnh sẵn có
 
-**Khái niệm cốt lõi:**
+**Khái niệm chi tiết (dành cho phỏng vấn):**
 
-`useValue` bảo NestJS: **"Đừng tạo instance nào cả. Cứ đưa thẳng giá trị/object này cho ai yêu cầu token."**
+`useValue` là cách cung cấp một **giá trị tĩnh** (object, primitive, instance đã tạo sẵn) mà **không qua quá trình khởi tạo class** bởi NestJS. Khi bạn dùng `useValue`, bạn đang nói với NestJS: **"Đừng gọi `new` hay chạy bất kỳ logic nào. Chỉ cần trả về đúng giá trị này mỗi khi token được yêu cầu."**
 
-NestJS sẽ **không gọi `new`** và cũng không chạy hàm nào. Nó chỉ đơn giản trả về giá trị bạn cung cấp sẵn.
+Đây là cách đơn giản nhất trong 4 loại vì:
+- Không có quá trình khởi tạo động.
+- Giá trị được cung cấp **ngay lập tức** và **không thay đổi** trong suốt vòng đời ứng dụng.
+- Thường dùng khi giá trị đã được chuẩn bị sẵn từ bên ngoài (config, connection pool, mock object...).
 
-Cách này phù hợp khi bạn đã có sẵn giá trị và không muốn NestJS tự tạo.
+**Đặc điểm quan trọng:**
+- Token thường là **string** hoặc **Symbol** (không phải class).
+- Khi inject phải dùng `@Inject('TOKEN')`.
+- Rất hữu ích trong **unit testing** để thay thế dependency thật bằng mock.
 
-**Cú pháp:**
+**Ví dụ phỏng vấn hay dùng:**
 ```ts
-providers: [
-  {
-    provide: 'APP_CONFIG',           // Thường dùng string/symbol làm token
-    useValue: {
-      apiKey: 'abc-123',
-      timeout: 5000,
-    },
-  },
-]
+{ provide: 'APP_CONFIG', useValue: { apiKey: '...', timeout: 5000 } }
+
+// Hoặc mock trong test
+{ provide: CatsService, useValue: { findAll: () => [...] } }
 ```
 
-**Điểm nổi bật:**
-- Rất nhanh vì không qua bước khởi tạo.
-- Thường dùng để cung cấp **config tĩnh**, hằng số, hoặc **mock object** trong test.
-- Token thường là string hoặc Symbol (không phải class).
+> **Câu trả lời mẫu khi phỏng vấn:**
+> "`useValue` dùng khi tôi muốn inject một giá trị tĩnh hoặc một object đã được khởi tạo sẵn. NestJS sẽ không tạo instance mới mà chỉ trả về đúng giá trị tôi cung cấp. Rất tiện khi cung cấp config hoặc mock dependency trong test."
 
 ### 5.3. `useFactory` — Tạo provider bằng một hàm (Linh hoạt nhất)
 
-**Khái niệm cốt lõi:**
+**Khái niệm chi tiết (dành cho phỏng vấn):**
 
-`useFactory` bảo NestJS: **"Hãy gọi hàm này, và dùng kết quả trả về của hàm làm provider."**
+`useFactory` là cách **linh hoạt và mạnh mẽ nhất** trong 4 loại custom provider. Thay vì chỉ định class hoặc giá trị tĩnh, bạn cung cấp một **hàm factory**. NestJS sẽ **gọi hàm này** và sử dụng **giá trị trả về** của hàm làm provider.
 
-Đây là cách **linh hoạt và mạnh mẽ nhất**. Vì là hàm nên bạn có thể:
-- Viết logic phức tạp
-- Sử dụng `async/await`
-- Nhận các dependency khác thông qua mảng `inject`
+Điểm then chốt là:
+- Hàm factory có thể chứa **bất kỳ logic nào** (sync hoặc async).
+- Bạn có thể **inject các provider khác** vào hàm thông qua mảng `inject`.
+- NestJS sẽ **chờ Promise resolve** nếu factory trả về Promise (rất mạnh khi kết nối database).
 
-NestJS sẽ **gọi hàm** và dùng giá trị trả về (có thể là Promise) làm provider.
+Về bản chất, `useFactory` cho phép bạn **tạo provider một cách động** dựa trên runtime conditions, configuration, hoặc các dependency khác.
 
-**Cú pháp:**
+**Đặc điểm quan trọng:**
+- Mảng `inject` quyết định những gì được truyền vào hàm (theo thứ tự).
+- Hỗ trợ optional dependency với `{ token: '...', optional: true }`.
+- Đây là cách được dùng nhiều nhất khi làm việc với **ConfigModule** và database connection.
+
+**Ví dụ phỏng vấn hay dùng:**
 ```ts
 {
-  provide: 'DB_CONNECTION',
-  useFactory: (configService: ConfigService) => {
-    const options = configService.get('database');
-    return createConnection(options);
+  provide: 'DATABASE_CONNECTION',
+  useFactory: async (config: ConfigService) => {
+    const options = config.get('database');
+    const dataSource = new DataSource(options);
+    return await dataSource.initialize();
   },
-  inject: [ConfigService], // NestJS sẽ phân giải và truyền vào hàm
+  inject: [ConfigService],
 }
 ```
 
-**Điểm nổi bật:**
-- Hỗ trợ **async** hoàn toàn (NestJS sẽ chờ Promise resolve).
-- Có thể inject nhiều provider khác vào hàm factory.
-- Đây là cách được dùng nhiều nhất khi tạo database connection, Redis client, v.v.
+> **Câu trả lời mẫu khi phỏng vấn:**
+> "`useFactory` cho phép tôi tạo provider một cách linh hoạt bằng cách cung cấp một hàm. Hàm này có thể nhận các dependency khác qua `inject`, hỗ trợ async, và tôi có thể viết logic phức tạp để quyết định instance nào được tạo. Đây là cách tôi thường dùng để tạo database connection dựa trên config động."
 
 ### 5.4. `useExisting` — Tạo bí danh (Alias) cho provider đã có
 
-**Khái niệm cốt lõi:**
+**Khái niệm chi tiết (dành cho phỏng vấn):**
 
-`useExisting` bảo NestJS: **"Token này chỉ là một tên gọi khác của provider đã tồn tại trước đó. Hãy trỏ về cùng một instance."**
+`useExisting` được dùng để tạo **bí danh (alias)** cho một provider đã tồn tại. Khi bạn dùng `useExisting`, bạn đang nói với NestJS: **"Token mới này không tạo instance mới. Hãy trỏ nó về cùng một instance của provider đã được đăng ký trước đó."**
 
-Nó **không tạo instance mới**. Thay vào đó, nó chỉ tạo thêm một "bí danh" (alias) trỏ đến provider đã được đăng ký.
+Điểm khác biệt lớn nhất so với 3 cách còn lại là:
+- **Không tạo instance mới**.
+- Chỉ tạo thêm một "tên gọi khác" trỏ đến provider đã có.
+- Cùng một instance được chia sẻ giữa nhiều token.
 
-**Cú pháp:**
+Cách này rất hữu ích khi bạn muốn:
+- Giữ **backward compatibility** sau khi refactor.
+- Cung cấp nhiều tên cho cùng một service.
+- Tạo public API cho implementation nội bộ.
+
+**Đặc điểm quan trọng:**
+- Phải có provider gốc đã được đăng ký trước.
+- Cùng instance được tái sử dụng → tiết kiệm tài nguyên.
+
+**Ví dụ phỏng vấn hay dùng:**
 ```ts
 providers: [
-  DatabaseService,
-  { provide: 'LEGACY_DB_CONNECTION', useExisting: DatabaseService },
+  LoggerService,
+  { provide: 'APP_LOGGER', useExisting: LoggerService },
 ]
 ```
 
-**Điểm nổi bật:**
-- Cùng **một instance** được chia sẻ dưới nhiều token khác nhau.
-- Rất hữu ích khi muốn giữ **backward compatibility** hoặc cung cấp nhiều tên cho cùng một service.
+> **Câu trả lời mẫu khi phỏng vấn:**
+> "`useExisting` dùng để tạo alias cho một provider đã tồn tại. Nó không tạo instance mới mà chỉ trỏ token mới về cùng một instance. Tôi dùng cách này khi muốn đổi tên provider hoặc hỗ trợ nhiều module cùng dùng một service mà không tạo duplicate instance."
 
 ### 5.5. Bảng so sánh nhanh 4 loại Custom Provider
 
