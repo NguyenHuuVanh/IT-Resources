@@ -282,6 +282,53 @@ export class UserRepository {
 }
 ```
 
+**Nếu hàm factory có tham số thì sao? → dùng mảng `inject`:**
+
+Các tham số của hàm factory được NestJS "bơm" vào thông qua mảng `inject`. Bạn liệt kê provider nào trong `inject`, Nest phân giải chúng và truyền vào hàm **theo đúng thứ tự** (tên tham số không quan trọng, **vị trí** mới quan trọng):
+
+```
+inject: [ ConfigService , LoggerService ]
+             │                 │
+             ▼                 ▼
+useFactory: ( config    ,     logger    ) => { ... }
+```
+
+```typescript
+{
+  provide: 'DB_CONNECTION',
+  useFactory: (config: ConfigService, logger: LoggerService) => { // 👈 2 tham số
+    logger.log('Đang kết nối...');
+    return createConnection(config.get('DB_URL'));
+  },
+  inject: [ConfigService, LoggerService], // 👈 đúng thứ tự tham số
+}
+```
+
+- ⚠️ Nếu hàm có tham số mà **quên khai báo trong `inject`** → tham số đó là `undefined`. Nest **không tự đoán** dependency của factory qua kiểu (khác với constructor thông thường).
+- Hàm **không có tham số** → bỏ luôn `inject`:
+  ```typescript
+  { provide: 'RANDOM_ID', useFactory: () => Math.random().toString(36) }
+  ```
+- Dependency có token **string/symbol** cũng đặt thẳng vào `inject`:
+  ```typescript
+  { provide: 'CONNECTION', useFactory: (opts) => new Conn(opts), inject: ['CONFIG_OPTIONS'] }
+  ```
+- Dependency **optional** (có thể thiếu) → bọc `{ token, optional: true }`:
+  ```typescript
+  inject: [
+    ConfigService,                             // bắt buộc
+    { token: 'HTTP_OPTIONS', optional: true }, // 👈 thiếu = undefined
+  ]
+  ```
+
+| Câu hỏi | Trả lời |
+|---------|---------|
+| Tham số của factory lấy từ đâu? | Từ mảng **`inject`** |
+| Mapping thế nào? | Theo **thứ tự** phần tử trong `inject` ↔ vị trí tham số |
+| Quên khai báo trong `inject`? | Tham số → `undefined` |
+| Hàm không tham số? | Bỏ `inject` |
+| Dependency có thể thiếu? | `{ token: 'X', optional: true }` |
+
 ### 5.4. `useExisting` — Tạo alias (bí danh)
 
 **Khái niệm:** Bảo NestJS *"Token này chỉ là **tên gọi khác** của một provider đã tồn tại — cùng trỏ về **một instance**."*
