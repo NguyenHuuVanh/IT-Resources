@@ -109,39 +109,234 @@ export class PhoModule {}
 
 ## 5. Các loại Provider (Custom Providers)
 
-IoC Container mạnh hơn nhiều so với ví dụ cơ bản. Có **4 cách** định nghĩa provider:
-
-| Cách | Mô tả | Dùng khi |
-|------|-------|----------|
-| `useClass` | Mặc định, cung cấp một class | Trường hợp thông thường |
-| `useValue` | Inject một giá trị / object có sẵn | Config, hằng số, mock test |
-| `useFactory` | Tạo instance động qua hàm (sync/async) | Cần khởi tạo theo điều kiện / async |
-| `useExisting` | Tạo alias cho provider khác | Đặt tên thay thế cho provider |
+IoC Container mạnh hơn nhiều so với ví dụ cơ bản. Mọi provider đều có **2 phần**:
 
 ```typescript
-// useValue
-{ provide: 'API_KEY', useValue: 'abc-123' }
-
-// useFactory
 {
-  provide: 'DB_CONNECTION',
-  useFactory: async (config: ConfigService) => {
-    return await createConnection(config.get('DB_URL'));
-  },
-  inject: [ConfigService], // dependency mà factory cần
+  provide: TOKEN,   // 👈 ĐỊNH DANH — cái "tên" để nơi khác yêu cầu
+  use___: ...,      // 👈 CÁCH TẠO — Nest dùng cái này để tạo ra giá trị
 }
-
-// useClass
-{ provide: Logger, useClass: ProductionLogger }
-
-// useExisting (alias)
-{ provide: 'Logger', useExisting: ProductionLogger }
 ```
 
-Với provider không phải class (token là string/symbol), inject bằng `@Inject()`:
+- **`provide` (token):** có thể là class, abstract class, string, hoặc symbol — "chìa khóa" để inject.
+- **`use___`:** quyết định Nest **tạo ra cái gì** và **bằng cách nào**. Có đúng **4 kiểu** dưới đây.
+
+| Cách | Tạo ra gì | Dùng khi |
+|------|-----------|----------|
+| `useClass` | Instance mới của một class | Trường hợp thông thường, đổi impl theo môi trường |
+| `useValue` | Giá trị / object có sẵn | Config, hằng số, mock test |
+| `useFactory` | Kết quả trả về từ một hàm (sync/async) | Cần logic / async / phụ thuộc provider khác |
+| `useExisting` | Alias trỏ về provider khác | Đặt tên thay thế cho provider có sẵn |
+
+### 5.1. `useClass` — Tạo instance từ một class
+
+**Khái niệm:** Bảo NestJS *"Khi ai yêu cầu token này, hãy `new` ra một instance của class chỉ định."* Đây là cách **mặc định và phổ biến nhất**.
+
+**Cách dùng — dạng rút gọn vs đầy đủ:**
 
 ```typescript
-constructor(@Inject('API_KEY') private apiKey: string) {}
+// Dạng rút gọn (khi token == class)
+providers: [CatsService]
+
+// Dạng đầy đủ — tương đương
+providers: [
+  { provide: CatsService, useClass: CatsService }
+]
+```
+
+**Khi nào dùng:** service/repository thông thường; đổi implementation theo môi trường (dev/prod/test); lập trình theo interface (abstract class).
+
+**Tác dụng:** Nest tự khởi tạo & tự phân giải dependency của class đó; cho phép **tách token khỏi implementation** → loose coupling.
+
+**Ví dụ — đổi class theo môi trường:**
+
+```typescript
+// Token là abstract class (interface chung)
+export abstract class ConfigService {
+  abstract get(key: string): string;
+}
+
+@Injectable()
+export class DevConfigService extends ConfigService {
+  get(key: string) { return `[DEV] ${key}`; }
+}
+
+@Injectable()
+export class ProdConfigService extends ConfigService {
+  get(key: string) { return `[PROD] ${key}`; }
+}
+
+// app.module.ts
+@Module({
+  providers: [
+    {
+      provide: ConfigService,                 // 👈 token KHÔNG đổi
+      useClass:
+        process.env.NODE_ENV === 'production'
+          ? ProdConfigService                 // prod → class này
+          : DevConfigService,                 // dev → class kia
+    },
+  ],
+})
+export class AppModule {}
+
+// Nơi dùng — KHÔNG cần biết đang là Dev hay Prod
+@Injectable()
+export class ReportService {
+  constructor(private config: ConfigService) {} // chỉ phụ thuộc token
+}
+```
+
+> 💡 `ReportService` đổi môi trường mà **không sửa một dòng nào** — đúng tinh thần **Dependency Inversion** (chữ D trong SOLID).
+
+### 5.2. `useValue` — Cung cấp một giá trị có sẵn
+
+**Khái niệm:** Bảo NestJS *"Đừng tạo gì cả, cứ đưa thẳng giá trị/object này cho ai yêu cầu token."*
+
+**Cách dùng:**
+
+```typescript
+providers: [
+  { provide: 'APP_CONFIG', useValue: { apiKey: 'abc-123', timeout: 5000 } }
+]
+```
+
+**Khi nào dùng:** hằng số / object cấu hình tĩnh; inject một thư viện bên ngoài đã khởi tạo sẵn; **mock** dependency khi test.
+
+**Tác dụng:** không qua bước khởi tạo — đưa nguyên giá trị; cực tiện để **thay đồ thật bằng đồ giả** lúc test.
+
+**Ví dụ — config + mock test:**
+
+```typescript
+// 1. Inject object cấu hình tĩnh
+const configProvider = {
+  provide: 'APP_CONFIG',
+  useValue: { siteName: 'My Shop', currency: 'VND' },
+};
+
+@Injectable()
+export class ShopService {
+  constructor(@Inject('APP_CONFIG') private config: any) {}
+  getCurrency() { return this.config.currency; } // 'VND'
+}
+
+// 2. Mock khi test — thay CatsService thật bằng object giả
+const mockCatsService = { findAll: () => [{ name: 'Mèo giả', age: 1 }] };
+
+const moduleRef = await Test.createTestingModule({
+  providers: [
+    { provide: CatsService, useValue: mockCatsService }, // 👈 đồ giả
+  ],
+}).compile();
+```
+
+> ⚠️ Token là **string/symbol** thì nơi inject phải dùng `@Inject('TOKEN')`. Token là class thì không cần.
+
+### 5.3. `useFactory` — Tạo bằng một hàm (linh hoạt nhất)
+
+**Khái niệm:** Bảo NestJS *"Hãy gọi hàm này, lấy kết quả nó trả về làm provider."* Vì là hàm nên được viết **logic tùy ý**, kể cả **async** và **phụ thuộc provider khác**.
+
+**Cách dùng:**
+
+```typescript
+providers: [
+  {
+    provide: 'DB_CONNECTION',
+    useFactory: async (config: ConfigService) => {
+      return await createConnection(config.get('DB_URL'));
+    },
+    inject: [ConfigService], // 👈 dependency factory cần, Nest tự đưa vào hàm
+  },
+]
+```
+
+> Mảng `inject` rất quan trọng: liệt kê các provider Nest phải phân giải **trước**, rồi truyền vào tham số hàm `useFactory` theo đúng thứ tự.
+
+**Khi nào dùng:** việc tạo cần logic/điều kiện; cần async (kết nối DB, lấy token...); giá trị phụ thuộc provider khác.
+
+**Tác dụng:** linh hoạt nhất trong 4 cách; hỗ trợ khởi tạo bất đồng bộ (Nest **chờ** Promise resolve xong mới bootstrap tiếp).
+
+**Ví dụ — kết nối DB async phụ thuộc config:**
+
+```typescript
+@Module({
+  providers: [
+    ConfigService,
+    {
+      provide: 'DB_CONNECTION',
+      useFactory: async (config: ConfigService) => {
+        const url = config.get('DB_URL');
+        console.log('Đang kết nối tới', url, '...');
+        return await createConnection(url); // async
+      },
+      inject: [ConfigService], // factory nhận ConfigService
+    },
+  ],
+  exports: ['DB_CONNECTION'],
+})
+export class DatabaseModule {}
+
+@Injectable()
+export class UserRepository {
+  constructor(@Inject('DB_CONNECTION') private db: Connection) {}
+}
+```
+
+### 5.4. `useExisting` — Tạo alias (bí danh)
+
+**Khái niệm:** Bảo NestJS *"Token này chỉ là **tên gọi khác** của một provider đã tồn tại — cùng trỏ về **một instance**."*
+
+**Cách dùng:**
+
+```typescript
+providers: [
+  LoggerService,
+  { provide: 'AliasedLogger', useExisting: LoggerService }, // 👈 trỏ về provider có sẵn
+]
+```
+
+**Khi nào dùng:** muốn 2 token cùng trỏ về 1 instance; đổi/thêm tên token mới cho provider cũ mà không phá vỡ code đang dùng; cấp một "mặt tiền" công khai cho implementation nội bộ.
+
+**Tác dụng:** **không tạo instance mới** (khác hẳn `useClass`) — chỉ là con trỏ tới instance đã có.
+
+**Ví dụ — cùng một logger, hai cái tên:**
+
+```typescript
+@Injectable()
+export class LoggerService {
+  log(msg: string) { console.log(msg); }
+}
+
+@Module({
+  providers: [
+    LoggerService,
+    { provide: 'AliasedLogger', useExisting: LoggerService },
+  ],
+})
+export class AppModule {}
+
+@Injectable()
+export class ServiceA {
+  constructor(private logger: LoggerService) {}
+}
+
+@Injectable()
+export class ServiceB {
+  constructor(@Inject('AliasedLogger') private logger: LoggerService) {}
+}
+// ServiceA.logger === ServiceB.logger  ✅ (cùng 1 object)
+```
+
+> 🔑 **Phân biệt với `useClass`:** `useClass` tạo **instance mới**; `useExisting` **tái sử dụng** instance đã có (alias).
+
+### 5.5. Quy tắc token & `@Inject()`
+
+```typescript
+// Token là CLASS / abstract class → inject trực tiếp, KHÔNG cần @Inject
+constructor(private config: ConfigService) {}
+
+// Token là STRING / SYMBOL → BẮT BUỘC dùng @Inject('TOKEN')
+constructor(@Inject('APP_CONFIG') private config: any) {}
 ```
 
 > 💡 Nên dùng `Symbol` hoặc hằng số thay cho chuỗi thô làm token để tránh gõ sai/trùng.
