@@ -134,14 +134,137 @@ export class DatabaseModule {
 export class AppModule {}
 ```
 
-## 7. Vì sao dùng Module?
+## 7. Dynamic Module & `register()`
+
+Module thường (static) luôn cố định — không nhận tham số cấu hình. **Dynamic Module** cho phép module **nhận cấu hình lúc import**, rất hữu ích khi cùng một module cần chạy khác nhau tùy nơi dùng (vd: `StorageModule` khi thì S3, khi thì local).
+
+### 7.1. Khái niệm
+
+Là module tạo **động** qua một **static method** trả về object kiểu **`DynamicModule`** (chính là `@Module({...})` nhưng dựng lúc runtime). Theo quy ước cộng đồng, method thường đặt tên:
+
+| Method | Ý nghĩa quy ước |
+|--------|-----------------|
+| `register()` | Cấu hình **riêng cho từng nơi** import (mỗi nơi một config) |
+| `forRoot()` | Cấu hình **1 lần toàn app** (thường ở AppModule) |
+| `forFeature()` | Cấu hình bổ sung cho **một feature cụ thể** (sau `forRoot`) |
+| `*Async()` | Bản async (vd `registerAsync`) — config lấy từ nguồn bất đồng bộ |
+
+> `register` / `forRoot` / `forFeature` chỉ là **tên gọi quy ước** — kỹ thuật đều là static method trả về `DynamicModule`. Nên tuân theo quy ước cho dễ đọc.
+
+### 7.2. `register()` — cấu hình riêng mỗi nơi import
+
+```typescript
+// storage.module.ts
+import { DynamicModule, Module } from '@nestjs/common';
+
+@Module({}) // 👈 để trống, cấu hình do register() trả về
+export class StorageModule {
+  static register(options: StorageOptions): DynamicModule {
+    return {
+      module: StorageModule,          // 👈 BẮT BUỘC — chính module này
+      providers: [
+        { provide: 'STORAGE_OPTIONS', useValue: options }, // biến options thành provider
+        StorageService,
+      ],
+      exports: [StorageService],
+    };
+  }
+}
+```
+
+**Dùng — mỗi nơi truyền config khác nhau:**
+
+```typescript
+@Module({ imports: [StorageModule.register({ driver: 's3', bucket: 'my-bucket' })] })
+export class PhotoModule {}
+
+@Module({ imports: [StorageModule.register({ driver: 'local', path: '/tmp' })] })
+export class ReportModule {}
+```
+
+**Nhận config bên trong service:**
+
+```typescript
+@Injectable()
+export class StorageService {
+  constructor(@Inject('STORAGE_OPTIONS') private options: StorageOptions) {}
+
+  save(file: Buffer) {
+    if (this.options.driver === 's3') { /* upload S3 */ }
+    else { /* lưu local */ }
+  }
+}
+```
+
+> 💡 **Điểm mấu chốt:** `register()` biến **tham số cấu hình** (`options`) thành một **provider** (`useValue`) — nhờ đó service inject và dùng được config đó.
+
+### 7.3. `register()` vs `forRoot()` vs `forFeature()`
+
+| | `register()` | `forRoot()` | `forFeature()` |
+|---|-------------|-------------|----------------|
+| **Mục đích** | Config riêng mỗi nơi | Config chung toàn app | Config bổ sung cho feature |
+| **Số lần gọi** | Nhiều nơi, mỗi nơi 1 config | Thường 1 lần (root) | Nhiều lần theo feature |
+| **Ví dụ** | `JwtModule.register()` | `TypeOrmModule.forRoot()` | `TypeOrmModule.forFeature()` |
+
+### 7.4. `registerAsync()` — cấu hình bất đồng bộ
+
+Khi config phải lấy từ nguồn async (vd `ConfigService` đọc `.env`), dùng bản async với `useFactory`:
+
+```typescript
+@Module({})
+export class StorageModule {
+  static registerAsync(options: StorageAsyncOptions): DynamicModule {
+    return {
+      module: StorageModule,
+      imports: options.imports ?? [],
+      providers: [
+        {
+          provide: 'STORAGE_OPTIONS',
+          useFactory: options.useFactory, // 👈 hàm tạo config
+          inject: options.inject ?? [],   // 👈 dependency của factory
+        },
+        StorageService,
+      ],
+      exports: [StorageService],
+    };
+  }
+}
+
+// Dùng — lấy config từ ConfigService
+imports: [
+  StorageModule.registerAsync({
+    imports: [ConfigModule],
+    useFactory: (config: ConfigService) => ({
+      driver: config.get('STORAGE_DRIVER'),
+      bucket: config.get('S3_BUCKET'),
+    }),
+    inject: [ConfigService],
+  }),
+]
+```
+
+### 7.5. Cấu trúc `DynamicModule`
+
+```typescript
+{
+  module: StorageModule,   // BẮT BUỘC — class module chính
+  imports: [...],          // module phụ thuộc (tùy chọn)
+  providers: [...],        // provider (tùy chọn)
+  exports: [...],          // provider chia sẻ ra ngoài (tùy chọn)
+  global: true,            // biến thành global module (tùy chọn)
+}
+```
+
+> Chỉ `module` là bắt buộc; còn lại giống hệt các thuộc tính của `@Module()` bình thường.
+
+## 8. Vì sao dùng Module?
 
 - **Tổ chức rõ ràng:** mỗi tính năng một khối → dễ tìm, dễ đọc.
 - **Tái sử dụng:** module có thể dùng lại ở nhiều dự án.
 - **Đóng gói (encapsulation):** provider không bị "rò rỉ" ra ngoài trừ khi `exports`.
 - **Dễ mở rộng (scalable):** thêm tính năng = thêm module, không đụng code cũ.
 
-## 8. Câu hỏi phỏng vấn thường gặp
+## 9. Câu hỏi phỏng vấn thường gặp
 
 **Q: Module trong NestJS là gì?**
 > Là class gắn `@Module()`, gom nhóm Controller + Provider thành một khối tính năng; là đơn vị tổ chức cơ bản của ứng dụng.
@@ -161,7 +284,7 @@ export class AppModule {}
 **Q: Root module là gì?**
 > `AppModule` — module gốc Nest dùng để bắt đầu dựng application graph.
 
-## 9. Tổng kết
+## 10. Tổng kết
 
 - Module = khối gom Controller + Provider thành một tính năng, khai báo bằng `@Module()`.
 - 4 thuộc tính: `controllers`, `providers`, `imports`, `exports`.
